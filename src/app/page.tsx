@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { Listing } from "@/types";
-import { AuthProvider, useAuth } from "@/context/AuthContext";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Listing, ScreenState } from "@/types";
+import { useAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
 import { ListingCard } from "@/components/ListingCard";
@@ -12,12 +12,14 @@ import { UserProfileDrawer } from "@/components/UserProfileDrawer";
 import { CreateListingModal } from "@/components/CreateListingModal";
 import { SuggestMatchesModal } from "@/components/SuggestMatchesModal";
 import { Footer } from "@/components/Footer";
-import { Search, LayoutGrid, ListFilter, Plus } from "lucide-react";
+import { StateView } from "@/components/StateView";
+import { Plus } from "lucide-react";
 
-function FeedContent() {
+export default function HomePage() {
   const { user, openAuthModal } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [screenState, setScreenState] = useState<ScreenState>("loading");
+  const [errorMessage, setErrorMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSkill, setSelectedSkill] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
@@ -30,24 +32,41 @@ function FeedContent() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSuggestOpen, setIsSuggestOpen] = useState(false);
 
-  const fetchListings = async () => {
-    setLoading(true);
+  const fetchListings = useCallback(async () => {
+    setScreenState("loading");
+    setErrorMessage("");
+
     try {
-      const res = await fetch(`/api/listings?auth=${user ? "true" : "false"}`);
-      const data = await res.json();
-      if (data.success) {
-        setListings(data.data);
+      const isAuthParam = user ? "true" : "false";
+      const res = await fetch(`/api/listings?auth=${isAuthParam}`);
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setListings(data.data);
+        setScreenState("idle");
+      } else {
+        throw new Error(data.error || "Malformed listings response");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load listings";
+      setErrorMessage(msg);
+      setScreenState("error");
     }
-  };
+  }, [user]);
 
   useEffect(() => {
-    fetchListings();
-  }, [user]);
+    let isMounted = true;
+    (async () => {
+      if (isMounted) {
+        await fetchListings();
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchListings]);
 
   // Synchronize activeTab with selectedType
   const handleTabChange = (tab: string) => {
@@ -130,8 +149,20 @@ function FeedContent() {
     }
   };
 
+  // Compute current display state
+  const computedState: ScreenState =
+    screenState === "loading"
+      ? "loading"
+      : screenState === "error"
+      ? "error"
+      : listings.length === 0
+      ? "empty"
+      : filteredListings.length === 0
+      ? "no_results"
+      : "idle";
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#090b0e] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-[var(--bg-canvas)] text-[var(--text-primary)] transition-colors">
       {/* Slim Top Bar */}
       <Navbar
         onOpenCreate={() => setIsCreateOpen(true)}
@@ -141,7 +172,7 @@ function FeedContent() {
       />
 
       <main className="flex-1">
-        {/* Compact Hero (<= 30% viewport) */}
+        {/* Compact Editorial Hero */}
         <Hero
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -155,29 +186,31 @@ function FeedContent() {
 
         {/* Listings Feed Header & View */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center justify-between pb-4 mb-5 border-b border-white/5">
+          <div className="flex items-center justify-between pb-4 mb-5 border-b border-[var(--border-default)]">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-slate-200">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">
                 Active Listings
               </h2>
               {/* Count matches real filtered list */}
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-white/5 text-slate-400">
+              <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-default)] tabular-nums">
                 {filteredListings.length}
               </span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() =>
                   setDensity((d) => (d === "comfortable" ? "compact" : "comfortable"))
                 }
-                className="text-[11px] font-mono text-slate-400 hover:text-white px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
+                className="text-[11px] font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-2.5 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-default)] transition-colors min-h-[32px]"
                 title="Toggle density"
               >
-                {density === "comfortable" ? "Compact" : "Comfortable"}
+                {density === "comfortable" ? "Compact View" : "Comfortable View"}
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   if (!user) {
                     openAuthModal(() => setIsCreateOpen(true));
@@ -185,7 +218,7 @@ function FeedContent() {
                     setIsCreateOpen(true);
                   }
                 }}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white text-xs font-semibold shadow-xs transition-colors min-h-[32px]"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Post Requirement</span>
@@ -193,46 +226,18 @@ function FeedContent() {
             </div>
           </div>
 
-          {/* Feed Content */}
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div
-                  key={i}
-                  className="h-56 rounded-xl bg-[#0f1217] border border-white/5 animate-pulse"
-                />
-              ))}
-            </div>
-          ) : filteredListings.length === 0 ? (
-            <div className="text-center py-16 px-4 rounded-xl bg-[#0f1217] border border-white/5 max-w-md mx-auto">
-              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center mx-auto text-slate-400 mb-2.5">
-                <Search className="w-4 h-4" />
-              </div>
-              <h3 className="text-xs font-bold text-white mb-1">
-                No listings match current criteria
-              </h3>
-              <p className="text-[11px] text-slate-400 mb-4">
-                Try selecting &quot;All Skills&quot; or publish your project to recruit the first candidates.
-              </p>
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedSkill("all");
-                    setSelectedType("all");
-                  }}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-colors"
-                >
-                  Reset filters
-                </button>
-                <button
-                  onClick={() => setIsCreateOpen(true)}
-                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors"
-                >
-                  Post what you need
-                </button>
-              </div>
-            </div>
+          {/* Feed Content or State View */}
+          {computedState !== "idle" ? (
+            <StateView
+              state={computedState}
+              onRetry={fetchListings}
+              onResetFilters={() => {
+                setSearchQuery("");
+                setSelectedSkill("all");
+                setSelectedType("all");
+              }}
+              customMessage={errorMessage}
+            />
           ) : (
             <div
               className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 ${
@@ -251,7 +256,7 @@ function FeedContent() {
         </div>
       </main>
 
-      {/* Clean Footer */}
+      {/* Clean Footer with comprehensive navigation */}
       <Footer />
 
       {/* Detail Drawer (Connect on Gmail Flow) */}
@@ -273,14 +278,14 @@ function FeedContent() {
         onSelectListing={(item) => setSelectedListing(item)}
       />
 
-      {/* Create Requirement Modal (6 fields) */}
+      {/* Create Requirement Modal */}
       <CreateListingModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onListingCreated={handleListingCreated}
       />
 
-      {/* Suggest Matches Modal (Honest, skill overlap) */}
+      {/* Suggest Matches Modal */}
       <SuggestMatchesModal
         isOpen={isSuggestOpen}
         onClose={() => setIsSuggestOpen(false)}
@@ -288,13 +293,5 @@ function FeedContent() {
         onSelectListing={(item) => setSelectedListing(item)}
       />
     </div>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <AuthProvider>
-      <FeedContent />
-    </AuthProvider>
   );
 }

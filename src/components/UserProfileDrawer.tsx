@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Listing } from "@/types";
-import { X, Check, Trash2, Mail, ExternalLink, ShieldCheck, LogOut } from "lucide-react";
+import { X, Trash2, Mail, ShieldCheck, LogOut, RefreshCw } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 
 interface UserProfileDrawerProps {
   isOpen: boolean;
@@ -23,7 +24,7 @@ export function UserProfileDrawer({
   onSelectListing,
 }: UserProfileDrawerProps) {
   const { user, signOut, contactedList } = useAuth();
-  const [activeTab, setActiveTab] = useState<"profile" | "my_listings" | "contacted">("my_listings");
+  const [activeTab, setActiveTab] = useState<"my_listings" | "contacted">("my_listings");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   if (!isOpen || !user) return null;
@@ -50,7 +51,29 @@ export function UserProfileDrawer({
       if (data.success) {
         onListingUpdated(data.data);
       }
-    } catch (e) {
+    } catch (e: unknown) {
+      console.error(e);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRenew = async (listing: Listing) => {
+    setActionLoading(listing.id);
+    try {
+      const res = await fetch(`/api/listings/${listing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ownerEmail: user.email,
+          status: "renew",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        onListingUpdated(data.data);
+      }
+    } catch (e: unknown) {
       console.error(e);
     } finally {
       setActionLoading(null);
@@ -72,7 +95,7 @@ export function UserProfileDrawer({
       if (data.success) {
         onListingDeleted(listingId);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(e);
     } finally {
       setActionLoading(null);
@@ -80,214 +103,206 @@ export function UserProfileDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-md bg-[#0e1117] border-l border-white/10 h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200 overflow-hidden"
+        className="w-full max-w-md bg-[var(--bg-surface)] border-l border-[var(--border-default)] h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-[#12161f]">
+        <div className="px-5 py-4 border-b border-[var(--border-default)] flex items-center justify-between bg-[var(--bg-elevated)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-xs font-bold text-white overflow-hidden">
-              {user.photo ? (
-                <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
-              ) : (
-                user.name.charAt(0)
-              )}
-            </div>
+            <Avatar src={user.photo} name={user.name} size={32} />
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-white">{user.name}</span>
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-xs font-bold text-[var(--text-primary)]">{user.name}</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
               </div>
-              <span className="text-[10px] text-slate-400">{user.email}</span>
+              <span className="text-[11px] text-[var(--text-secondary)] font-mono">{user.email}</span>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+            aria-label="Close drawer"
+            className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Tab switch */}
-        <div className="flex border-b border-white/10 bg-[#0a0c10] px-4 pt-2 gap-4 text-xs font-medium">
+        {/* Tab Controls */}
+        <div className="flex border-b border-[var(--border-default)] px-4 bg-[var(--bg-surface)]">
           <button
+            type="button"
             onClick={() => setActiveTab("my_listings")}
-            className={`pb-2.5 border-b-2 transition-colors ${
+            className={`py-3 px-3 text-xs font-medium border-b-2 transition-colors ${
               activeTab === "my_listings"
-                ? "border-blue-500 text-white font-semibold"
-                : "border-transparent text-slate-400 hover:text-white"
+                ? "border-[var(--accent-primary)] text-[var(--text-primary)]"
+                : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             }`}
           >
             My Listings ({myListings.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("contacted")}
-            className={`pb-2.5 border-b-2 transition-colors ${
+            className={`py-3 px-3 text-xs font-medium border-b-2 transition-colors ${
               activeTab === "contacted"
-                ? "border-blue-500 text-white font-semibold"
-                : "border-transparent text-slate-400 hover:text-white"
+                ? "border-[var(--accent-primary)] text-[var(--text-primary)]"
+                : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             }`}
           >
             Contacted ({contactedListings.length})
           </button>
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`pb-2.5 border-b-2 transition-colors ${
-              activeTab === "profile"
-                ? "border-blue-500 text-white font-semibold"
-                : "border-transparent text-slate-400 hover:text-white"
-            }`}
-          >
-            Profile
-          </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {activeTab === "my_listings" && (
-            <div className="space-y-3">
+            <>
               {myListings.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-500">
-                  You haven&apos;t posted any requirements yet.
+                <div className="text-center py-12 px-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)]">
+                  <p className="text-xs text-[var(--text-secondary)] mb-2">
+                    You haven&apos;t posted any collaborator requirements yet.
+                  </p>
                 </div>
               ) : (
-                myListings.map((listing) => (
+                myListings.map((l) => (
                   <div
-                    key={listing.id}
-                    className="p-4 rounded-xl bg-white/[0.03] border border-white/5 space-y-2.5"
+                    key={l.id}
+                    className="p-3.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] space-y-2.5"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="text-[10px] font-mono text-blue-400 block mb-0.5">
-                          {listing.event}
+                        <span className="text-[10px] font-mono text-[var(--accent-primary)] block">
+                          {l.event}
                         </span>
-                        <h4 className="text-xs font-bold text-white line-clamp-1">
-                          {listing.title}
+                        <h4
+                          onClick={() => {
+                            onClose();
+                            onSelectListing(l);
+                          }}
+                          className="text-xs font-bold text-[var(--text-primary)] hover:underline cursor-pointer leading-tight"
+                        >
+                          {l.title}
                         </h4>
                       </div>
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          listing.status === "filled"
-                            ? "bg-rose-500/10 text-rose-300 border border-rose-500/20"
-                            : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded uppercase font-semibold shrink-0 ${
+                          l.status === "filled"
+                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                            : l.status === "expired"
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                         }`}
                       >
-                        {listing.status === "filled" ? "Closed / Filled" : "Open"}
+                        {l.status}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-                      <button
-                        onClick={() => handleToggleFilled(listing)}
-                        disabled={actionLoading === listing.id}
-                        className="text-slate-400 hover:text-white transition-colors"
-                      >
-                        {listing.status === "filled" ? "Reopen Listing" : "Mark as Filled"}
-                      </button>
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[var(--border-subtle)]">
+                      <span className="text-[var(--text-tertiary)] font-mono">
+                        Expires: {new Date(l.expiresAt).toLocaleDateString()}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {/* 1-click renew */}
+                        <button
+                          type="button"
+                          onClick={() => handleRenew(l)}
+                          disabled={actionLoading === l.id}
+                          className="px-2 py-1 rounded bg-[var(--bg-surface)] hover:bg-[var(--bg-overlay)] border border-[var(--border-default)] text-[var(--text-secondary)] text-[10px] flex items-center gap-1 transition-colors"
+                          title="Renew listing for 30 more days"
+                        >
+                          <RefreshCw className="w-2.5 h-2.5" />
+                          <span>Renew</span>
+                        </button>
 
-                      <button
-                        onClick={() => handleDelete(listing.id)}
-                        disabled={actionLoading === listing.id}
-                        className="text-rose-400 hover:text-rose-300 flex items-center gap-1 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFilled(l)}
+                          disabled={actionLoading === l.id}
+                          className="px-2 py-1 rounded bg-[var(--bg-surface)] hover:bg-[var(--bg-overlay)] border border-[var(--border-default)] text-[var(--text-secondary)] text-[10px] transition-colors"
+                        >
+                          {l.status === "filled" ? "Reopen" : "Mark Filled"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(l.id)}
+                          disabled={actionLoading === l.id}
+                          aria-label="Delete listing"
+                          className="p-1 rounded text-red-500 hover:bg-red-500/10 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
               )}
-            </div>
+            </>
           )}
 
           {activeTab === "contacted" && (
-            <div className="space-y-3">
+            <>
               {contactedListings.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-500">
-                  You haven&apos;t contacted any creators yet. Once you click &quot;Connect on Gmail&quot;, they appear here.
+                <div className="text-center py-12 px-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)]">
+                  <Mail className="w-6 h-6 text-[var(--text-tertiary)] mx-auto mb-2" />
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    You haven&apos;t connected with any leads on Gmail yet.
+                  </p>
                 </div>
               ) : (
-                contactedListings.map((listing) => (
+                contactedListings.map((l) => (
                   <div
-                    key={listing.id}
+                    key={l.id}
                     onClick={() => {
-                      onSelectListing(listing);
                       onClose();
+                      onSelectListing(l);
                     }}
-                    className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 cursor-pointer transition-colors space-y-1.5"
+                    className="p-3.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] hover:border-[var(--border-highlight)] transition-colors cursor-pointer space-y-1.5"
                   >
-                    <div className="flex items-center justify-between text-[10px] text-slate-400">
-                      <span>{listing.event}</span>
-                      <span className="text-blue-400 flex items-center gap-1">
-                        <Mail className="w-3 h-3" />
-                        <span>Gmail Sent</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono text-[var(--accent-primary)]">
+                        {l.event}
+                      </span>
+                      <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
+                        Contacted
                       </span>
                     </div>
-                    <h4 className="text-xs font-semibold text-white truncate">
-                      {listing.title}
-                    </h4>
-                    <p className="text-[11px] text-slate-400">
-                      Lead: {listing.ownerName} ({listing.ownerCollege})
+                    <h4 className="text-xs font-bold text-[var(--text-primary)]">{l.title}</h4>
+                    <p className="text-[11px] text-[var(--text-secondary)]">
+                      Lead: {l.ownerName} ({l.ownerCollege})
                     </p>
                   </div>
                 ))
               )}
-            </div>
+            </>
           )}
+        </div>
 
-          {activeTab === "profile" && (
-            <div className="space-y-4 text-xs">
-              <div>
-                <span className="text-[11px] text-slate-500 uppercase tracking-wider block mb-1">
-                  Verified Gmail
-                </span>
-                <span className="text-white font-mono bg-black/40 px-3 py-2 rounded-lg border border-white/5 block">
-                  {user.email}
-                </span>
-              </div>
-              <div>
-                <span className="text-[11px] text-slate-500 uppercase tracking-wider block mb-1">
-                  College / Affiliation
-                </span>
-                <span className="text-white bg-black/40 px-3 py-2 rounded-lg border border-white/5 block">
-                  {user.college}
-                </span>
-              </div>
-              <div>
-                <span className="text-[11px] text-slate-500 uppercase tracking-wider block mb-1">
-                  Role
-                </span>
-                <span className="text-white bg-black/40 px-3 py-2 rounded-lg border border-white/5 block">
-                  {user.role}
-                </span>
-              </div>
-              <div>
-                <span className="text-[11px] text-slate-500 uppercase tracking-wider block mb-1">
-                  Bio
-                </span>
-                <p className="text-slate-300 bg-black/40 p-3 rounded-lg border border-white/5">
-                  {user.bio}
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-white/10">
-                <button
-                  onClick={() => {
-                    signOut();
-                    onClose();
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-300 border border-white/5 hover:border-rose-500/20 font-semibold transition-colors flex items-center justify-center gap-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Sign out</span>
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Footer with Sign Out */}
+        <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-elevated)] flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => {
+              signOut();
+              onClose();
+            }}
+            className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-red-500 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
+          </button>
+          <span className="text-[10px] font-mono text-[var(--text-tertiary)]">
+            Verified Google Session
+          </span>
         </div>
       </div>
     </div>

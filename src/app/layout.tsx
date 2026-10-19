@@ -1,24 +1,33 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "SynqSquad | Find Hackathon Teammates & Research Co-Founders",
+  title: "SynqSquad | Find Hackathon Teammates & Research Co-Authors",
   description:
-    "The 0-friction platform to find complementary hackathon teammates, AI researchers, and project builders. Connect instantly.",
+    "The 0-friction platform to find complementary hackathon teammates and research paper collaborators. One person finds one person, and you talk directly on Gmail.",
   keywords: [
-    "hackathon team finder",
+    "hackathon teammate finder",
     "research collaborator",
-    "hackathon partner",
-    "find developers",
-    "SIH team finder",
-    "ETHGlobal partner",
-    "AI research collaboration",
+    "SIH 2026 team finder",
+    "ETHGlobal teammate",
+    "AI paper co-author",
+    "NeurIPS collaborator",
   ],
+  authors: [{ name: "SynqSquad Team" }],
   openGraph: {
     title: "SynqSquad | Match & Build Winning Teams",
     description:
-      "Find hackathon partners & research collaborators in 60 seconds. Zero friction, instant direct outreach.",
+      "Find hackathon partners & research collaborators. Zero noise, verified Google accounts, talk directly on Gmail.",
     type: "website",
+    url: "https://synqsquad.vercel.app",
+    siteName: "SynqSquad",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SynqSquad | Find Hackathon Teammates & Research Co-Authors",
+    description:
+      "Zero noise, verified Google accounts. One person finds one person and connects directly on Gmail.",
   },
 };
 
@@ -28,9 +37,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full antialiased dark">
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">
-        {children}
+    <html lang="en" className="h-full antialiased dark" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-[var(--bg-canvas)] text-[var(--text-primary)] font-sans selection:bg-blue-600 selection:text-white">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

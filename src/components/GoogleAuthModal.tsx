@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { X, Shield, ArrowRight, Check } from "lucide-react";
+import { X, Shield, ArrowRight, RefreshCw, AlertCircle } from "lucide-react";
 
 const SUGGESTED_SKILLS = [
   "Python",
@@ -20,7 +20,15 @@ const SUGGESTED_SKILLS = [
 ];
 
 export function GoogleAuthModal() {
-  const { isAuthModalOpen, closeAuthModal, signInWithGoogle } = useAuth();
+  const {
+    isAuthModalOpen,
+    closeAuthModal,
+    signInWithGoogle,
+    isLoggingIn,
+    loginError,
+    retryLogin,
+  } = useAuth();
+
   const [step, setStep] = useState<"signin" | "profile">("signin");
   const [role, setRole] = useState("Full-Stack Developer");
   const [college, setCollege] = useState("IIT Delhi");
@@ -34,25 +42,29 @@ export function GoogleAuthModal() {
 
   if (!isAuthModalOpen) return null;
 
-  const handleGoogleClick = () => {
-    // Proceed to profile configuration
+  const handleGoogleClick = async () => {
+    // Proceed to profile configuration step
     setStep("profile");
   };
 
-  const handleFinishProfile = () => {
-    signInWithGoogle({
+  const handleFinishProfile = async () => {
+    const success = await signInWithGoogle({
       role,
       college,
       skills: selectedSkills,
       lookingFor,
       bio,
     });
-    setStep("signin");
+    if (success) {
+      setStep("signin");
+    }
   };
 
-  const handleSkip = () => {
-    signInWithGoogle();
-    setStep("signin");
+  const handleSkip = async () => {
+    const success = await signInWithGoogle();
+    if (success) {
+      setStep("signin");
+    }
   };
 
   const toggleSkill = (skill: string) => {
@@ -62,44 +74,75 @@ export function GoogleAuthModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={closeAuthModal}
+    >
       <div
-        className="w-full max-w-md bg-[#0f1217] border border-white/10 rounded-2xl shadow-2xl overflow-hidden p-6 text-left animate-in zoom-in-95 duration-150"
+        className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-2xl overflow-hidden p-6 text-left animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-[var(--border-subtle)] mb-5">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <div className="w-6 h-6 rounded-md bg-[var(--accent-muted)] border border-[var(--border-default)] flex items-center justify-center text-[var(--accent-primary)]">
               <Shield className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-semibold text-slate-300">
-              {step === "signin" ? "Google Authentication" : "30-Second Profile Setup"}
+            <span id="auth-modal-title" className="text-xs font-semibold text-[var(--text-secondary)]">
+              {step === "signin" ? "Google Authentication" : "Quick Profile Setup (Optional)"}
             </span>
           </div>
           <button
+            type="button"
             onClick={closeAuthModal}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+            aria-label="Close modal"
+            className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
+        {/* Error notification with retry */}
+        {loginError && (
+          <div
+            role="alert"
+            className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center justify-between gap-2"
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{loginError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={retryLogin}
+              className="text-xs font-semibold underline flex items-center gap-1 shrink-0"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Retry</span>
+            </button>
+          </div>
+        )}
+
         {step === "signin" ? (
           <div className="space-y-4">
             <div>
-              <h3 className="text-base font-bold text-white mb-1">
+              <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
                 Connect on Gmail
               </h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                SynqSquad uses verified Google accounts so collaborators can reach you on Gmail with zero spam. Your email is never exposed publicly.
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                SynqSquad uses verified Google accounts so collaborators can reach you on Gmail with zero spam. Your raw email address is never exposed publicly.
               </p>
             </div>
 
             {/* Google Action Button */}
             <button
+              type="button"
               onClick={handleGoogleClick}
-              className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs flex items-center justify-center gap-2.5 shadow-sm transition-all"
+              disabled={isLoggingIn}
+              className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 border border-slate-300 font-semibold text-xs flex items-center justify-center gap-2.5 shadow-sm transition-all min-h-[44px]"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
@@ -119,35 +162,33 @@ export function GoogleAuthModal() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              <span>Continue with Google</span>
+              <span>{isLoggingIn ? "Verifying Google Account..." : "Continue with Google"}</span>
             </button>
 
-            <div className="pt-2">
-              <span className="text-[11px] text-slate-500 block text-center">
-                One-click login • Verified Gmail • Zero passwords
-              </span>
+            <div className="pt-2 text-[11px] text-[var(--text-tertiary)] text-center leading-relaxed">
+              <span>By signing in, you agree to our Terms, Privacy Policy, and store consent timestamp. Minimum profile & email scopes only.</span>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
             <div>
-              <h3 className="text-base font-bold text-white mb-1">
+              <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
                 Complete your collaborator profile
               </h3>
-              <p className="text-xs text-slate-400">
-                This helps creators understand your background when you message them.
+              <p className="text-xs text-[var(--text-secondary)]">
+                This helps creators understand your background when you message them on Gmail.
               </p>
             </div>
 
             {/* Role */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                 Your Primary Role
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-white text-xs focus:outline-none"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] text-xs focus:outline-none min-h-[40px]"
               >
                 <option value="Full-Stack Developer">Full-Stack Developer</option>
                 <option value="Frontend Engineer">Frontend Engineer</option>
@@ -161,7 +202,7 @@ export function GoogleAuthModal() {
 
             {/* College */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
                 College or Organization
               </label>
               <input
@@ -169,13 +210,40 @@ export function GoogleAuthModal() {
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
                 placeholder="e.g. IIT Delhi, BITS Pilani, Stanford"
-                className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-white text-xs focus:outline-none"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] text-xs focus:outline-none min-h-[40px]"
               />
+            </div>
+
+            {/* Looking for */}
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                Looking For
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: "hackathon", label: "Hackathons" },
+                  { id: "research", label: "Research" },
+                  { id: "both", label: "Both" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setLookingFor(opt.id as "hackathon" | "research" | "both")}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-colors ${
+                      lookingFor === opt.id
+                        ? "bg-[var(--accent-primary)] text-white border-[var(--accent-primary)]"
+                        : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-default)]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Skills */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">
                 Top Skills (Select 3-5)
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -188,8 +256,8 @@ export function GoogleAuthModal() {
                       onClick={() => toggleSkill(sk)}
                       className={`px-2.5 py-1 rounded-md text-[11px] font-mono transition-colors ${
                         active
-                          ? "bg-blue-600 text-white"
-                          : "bg-white/5 text-slate-400 hover:text-white"
+                          ? "bg-[var(--accent-primary)] text-white"
+                          : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-default)]"
                       }`}
                     >
                       {active ? `✓ ${sk}` : sk}
@@ -199,21 +267,36 @@ export function GoogleAuthModal() {
               </div>
             </div>
 
+            {/* Bio */}
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
+                Brief Bio
+              </label>
+              <input
+                type="text"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="A sentence about what you like building..."
+                className="w-full px-3 py-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] text-xs focus:outline-none min-h-[40px]"
+              />
+            </div>
+
             {/* Actions */}
             <div className="pt-2 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={handleSkip}
-                className="text-xs text-slate-400 hover:text-white transition-colors"
+                className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors min-h-[40px] px-2"
               >
                 Skip for now
               </button>
               <button
                 type="button"
                 onClick={handleFinishProfile}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                disabled={isLoggingIn}
+                className="px-4 py-2 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors min-h-[40px]"
               >
-                <span>Save & Continue</span>
+                <span>{isLoggingIn ? "Saving..." : "Save & Continue"}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

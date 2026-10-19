@@ -1,0 +1,22 @@
+[
+  {
+    "reporterEmail": "moderation-tester@gmail.com",
+    "targetType": "listing",
+    "targetId": "lst-sih-railway-01",
+    "reason": "Spam / Unsolicited Promotion",
+    "details": "Testing report audit submission flow",
+    "id": "rep-mvflfsbi-pgjl",
+    "status": "pending",
+    "createdAt": "2026-10-19T18:34:23.646Z"
+  },
+  {
+    "reporterEmail": "moderation-tester@gmail.com",
+    "targetType": "listing",
+    "targetId": "lst-sih-railway-01",
+    "reason": "Spam / Unsolicited Promotion",
+    "details": "Testing report audit submission flow",
+    "id": "rep-mvfls7b6-d47w",
+    "status": "pending",
+    "createdAt": "2026-10-19T18:44:02.946Z"
+  }
+]

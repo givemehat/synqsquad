@@ -18,9 +18,10 @@ export async function GET(
       );
     }
     return NextResponse.json({ success: true, data: listing });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to fetch listing";
     return NextResponse.json(
-      { success: false, error: "Failed to fetch listing", details: error?.message },
+      { success: false, error: msg },
       { status: 500 }
     );
   }
@@ -32,11 +33,18 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as { ownerEmail?: string; status?: "open" | "filled" | "renew" };
 
     if (!body.ownerEmail || !body.status) {
       return NextResponse.json(
-        { success: false, error: "ownerEmail and status ('open' | 'filled') are required" },
+        { success: false, error: "ownerEmail and status ('open' | 'filled' | 'renew') are required" },
+        { status: 400 }
+      );
+    }
+
+    if (!["open", "filled", "renew"].includes(body.status)) {
+      return NextResponse.json(
+        { success: false, error: "Status must be 'open', 'filled', or 'renew'" },
         { status: 400 }
       );
     }
@@ -51,12 +59,13 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      message: `Listing marked as ${body.status}`,
+      message: `Listing updated successfully`,
       data: result.listing,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to update listing";
     return NextResponse.json(
-      { success: false, error: "Failed to update listing", details: error?.message },
+      { success: false, error: msg },
       { status: 500 }
     );
   }
@@ -68,7 +77,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as { ownerEmail?: string };
 
     if (!body.ownerEmail) {
       return NextResponse.json(
@@ -89,9 +98,10 @@ export async function DELETE(
       success: true,
       message: "Listing deleted successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to delete listing";
     return NextResponse.json(
-      { success: false, error: "Failed to delete listing", details: error?.message },
+      { success: false, error: msg },
       { status: 500 }
     );
   }

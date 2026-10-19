@@ -23,7 +23,7 @@ export function SuggestMatchesModal({
     user?.skills?.join(", ") || "PyTorch, Python, Next.js"
   );
   const [rankedResults, setRankedResults] = useState<
-    { listing: Listing; reason: string }[] | null
+    { listing: Listing; reason: string; matchedCount: number }[] | null
   >(null);
 
   if (!isOpen) return null;
@@ -51,33 +51,43 @@ export function SuggestMatchesModal({
 
         return {
           listing: l,
-          score: matches.length,
+          matchedCount: matches.length,
           reason,
         };
       })
-      .filter((item) => item.score > 0);
+      .filter((item) => item.matchedCount > 0);
 
-    // Sort by overlap count
-    scored.sort((a, b) => b.score - a.score);
+    // Sort by overlap count honestly
+    scored.sort((a, b) => b.matchedCount - a.matchedCount);
 
     setRankedResults(scored.slice(0, 5));
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="suggest-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-lg bg-[#0f1217] border border-white/10 rounded-2xl shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-150"
+        className="w-full max-w-lg bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-150 text-left"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-[var(--border-subtle)] mb-5">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-blue-400" />
-            <h3 className="text-base font-bold text-white">Suggested for You</h3>
+            <Sparkles className="w-4 h-4 text-[var(--accent-primary)]" />
+            <h3 id="suggest-modal-title" className="text-base font-bold text-[var(--text-primary)]">
+              Suggested for You
+            </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+            aria-label="Close modal"
+            className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
@@ -85,7 +95,7 @@ export function SuggestMatchesModal({
 
         <div className="space-y-4 text-xs">
           <div>
-            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-1">
               Your Primary Skills (Comma separated)
             </label>
             <input
@@ -93,52 +103,47 @@ export function SuggestMatchesModal({
               value={skillsInput}
               onChange={(e) => setSkillsInput(e.target.value)}
               placeholder="e.g. PyTorch, Next.js, C++, ROS2"
-              className="w-full px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-white text-xs focus:outline-none"
+              className="w-full px-3 py-2 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-primary)] text-xs focus:outline-none min-h-[40px]"
             />
           </div>
 
           <button
+            type="button"
             onClick={handleCalculateSuggestions}
-            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 rounded-xl bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white font-semibold transition-colors min-h-[44px]"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Find Complementary Squads</span>
+            Find Matching Requisitions
           </button>
 
-          {rankedResults && (
-            <div className="pt-3 border-t border-white/5 space-y-2.5">
-              <span className="text-[11px] font-semibold text-slate-400 block uppercase tracking-wider">
-                Ranked Recommendations ({rankedResults.length})
+          {/* Results list */}
+          {rankedResults !== null && (
+            <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
+              <span className="text-[11px] font-semibold text-[var(--text-secondary)] block">
+                {rankedResults.length} open requirement{rankedResults.length === 1 ? "" : "s"} looking for your skills:
               </span>
 
               {rankedResults.length === 0 ? (
-                <p className="text-slate-500 py-4 text-center">
-                  No active listings currently seeking these exact skills.
-                </p>
+                <div className="p-4 rounded-xl bg-[var(--bg-elevated)] text-center text-xs text-[var(--text-secondary)]">
+                  No open requirements currently list those exact skills. Try broader keywords like &quot;Python&quot; or &quot;Next.js&quot;.
+                </div>
               ) : (
                 rankedResults.map(({ listing, reason }) => (
                   <div
                     key={listing.id}
                     onClick={() => {
-                      onSelectListing(listing);
                       onClose();
+                      onSelectListing(listing);
                     }}
-                    className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 cursor-pointer transition-colors flex items-center justify-between gap-3"
+                    className="p-3 rounded-xl bg-[var(--bg-elevated)] hover:bg-[var(--bg-overlay)] border border-[var(--border-default)] transition-colors cursor-pointer flex items-center justify-between gap-3"
                   >
                     <div>
-                      <span className="text-[10px] font-mono text-blue-400 block mb-0.5">
+                      <span className="text-[10px] font-mono text-[var(--accent-primary)] block">
                         {listing.event}
                       </span>
-                      <h4 className="text-xs font-bold text-white line-clamp-1">
-                        {listing.title}
-                      </h4>
-                      <p className="text-[11px] text-slate-400 mt-1">{reason}</p>
+                      <h4 className="text-xs font-bold text-[var(--text-primary)]">{listing.title}</h4>
+                      <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{reason}</p>
                     </div>
-
-                    <span className="text-blue-400 text-xs font-semibold flex items-center gap-1 flex-shrink-0">
-                      <span>View</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
+                    <ArrowRight className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
                   </div>
                 ))
               )}

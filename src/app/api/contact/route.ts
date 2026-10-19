@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordContact, getContactedListings, getListingById } from "@/lib/db";
+import { contactInputSchema } from "@/lib/validations";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { fromUserEmail, listingId } = body;
+    const rawBody: unknown = await request.json();
+    const parseResult = contactInputSchema.safeParse(rawBody);
 
-    if (!fromUserEmail || !listingId) {
-      return NextResponse.json(
-        { success: false, error: "fromUserEmail and listingId are required" },
-        { status: 400 }
-      );
+    if (!parseResult.success) {
+      const err = parseResult.error.issues[0]?.message || "Invalid contact payload";
+      return NextResponse.json({ success: false, error: err }, { status: 400 });
     }
+
+    const { fromUserEmail, listingId } = parseResult.data;
 
     // Get the listing with unmasked email (internal access)
     const listing = await getListingById(listingId, true);
@@ -49,9 +50,10 @@ export async function POST(request: NextRequest) {
         remainingToday: recordResult.remainingToday,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to process Gmail connect";
     return NextResponse.json(
-      { success: false, error: "Failed to process Gmail connect", details: error?.message },
+      { success: false, error: msg },
       { status: 500 }
     );
   }
@@ -75,9 +77,10 @@ export async function GET(request: NextRequest) {
       count: contacted.length,
       data: contacted,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to fetch contacted listings";
     return NextResponse.json(
-      { success: false, error: "Failed to fetch contacted listings", details: error?.message },
+      { success: false, error: msg },
       { status: 500 }
     );
   }

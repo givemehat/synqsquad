@@ -6,14 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 import {
   X,
   Mail,
-  Calendar,
   Users,
   ShieldCheck,
   Check,
   Copy,
-  ExternalLink,
   AlertCircle,
+  ExternalLink,
 } from "lucide-react";
+import { Avatar } from "@/components/Avatar";
 
 interface ListingDetailDrawerProps {
   listing: Listing | null;
@@ -27,6 +27,7 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [unmaskedEmail, setUnmaskedEmail] = useState<string | null>(null);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [mailtoUrl, setMailtoUrl] = useState<string | null>(null);
 
   if (!listing) return null;
 
@@ -36,7 +37,7 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
     setErrorNotice(null);
     setSuccessNotice(null);
 
-    // If logged out, prompt Google login and resume this action
+    // If logged out, prompt Google login and resume this action automatically
     if (!user) {
       openAuthModal(() => handleConnectOnGmail());
       return;
@@ -58,32 +59,41 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
         throw new Error(data.error || "Failed to process connect");
       }
 
-      const recipientEmail = data.data.recipientEmail;
+      const recipientEmail: string = data.data.recipientEmail;
       setUnmaskedEmail(recipientEmail);
       addContactedId(listing.id);
 
-      // Construct prefilled Gmail Compose URL
-      const subject = encodeURIComponent(
-        `SynqSquad: Teammate inquiry for ${listing.event} — ${listing.title}`
-      );
-      const body = encodeURIComponent(
-        `Hi ${listing.ownerName},\n\nI saw your listing on SynqSquad for "${listing.title}" (${listing.event}).\n\nI would like to collaborate on this. Here is a brief summary of my background:\n- Role: ${user.role}\n- College / Affiliation: ${user.college}\n- Core Skills: ${user.skills.join(", ")}\n\n${user.bio ? `A bit about my work: ${user.bio}\n\n` : ""}Would you be open to a quick chat to discuss the open slots?\n\nBest regards,\n${user.name}\n${user.email}`
-      );
+      // Construct prefilled message
+      const subject = `SynqSquad: Teammate inquiry for ${listing.event} — ${listing.title}`;
+      const body = `Hi ${listing.ownerName},\n\nI saw your requirement on SynqSquad for "${listing.title}" (${listing.event}).\n\nI would like to collaborate on this. Here is a brief summary of my background:\n- Role: ${user.role}\n- College / Affiliation: ${user.college}\n- Core Skills: ${user.skills.join(", ")}\n\n${user.bio ? `About my work: ${user.bio}\n\n` : ""}Would you be open to a quick chat to discuss the open slots?\n\nBest regards,\n${user.name}\n${user.email}`;
 
-      const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+      const encodedSubject = encodeURIComponent(subject);
+      const encodedBody = encodeURIComponent(body);
+
+      // Primary Action: Google Mail Compose Tab
+      const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(
         recipientEmail
-      )}&su=${subject}&body=${body}`;
+      )}&su=${encodedSubject}&body=${encodedBody}`;
+
+      // Fallback: mailto link
+      const fallbackMailto = `mailto:${recipientEmail}?subject=${encodedSubject}&body=${encodedBody}`;
+      setMailtoUrl(fallbackMailto);
 
       // Open Gmail in a new tab
       const win = window.open(gmailComposeUrl, "_blank");
 
       if (!win || win.closed || typeof win.closed === "undefined") {
-        setSuccessNotice("Gmail popup blocked. You can copy the verified email address below.");
+        setSuccessNotice(
+          "Gmail popup was blocked by your browser. Use the copy button or mailto fallback below."
+        );
       } else {
-        setSuccessNotice("Gmail opened in a new tab. Saved to your Contacted list.");
+        setSuccessNotice(
+          `Gmail opened in a new tab. Verified contact revealed. Saved to your Contacted list.`
+        );
       }
-    } catch (err: any) {
-      setErrorNotice(err.message || "Could not connect to Gmail");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not connect to Gmail";
+      setErrorNotice(msg);
     } finally {
       setLoading(false);
     }
@@ -97,20 +107,26 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-lg bg-[#0e1117] border-l border-white/10 h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200 overflow-hidden"
+        className="w-full max-w-lg bg-[var(--bg-surface)] border-l border-[var(--border-default)] h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drawer Header */}
-        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-[#12161f]">
+        <div className="px-5 py-4 border-b border-[var(--border-default)] flex items-center justify-between bg-[var(--bg-elevated)]">
           <div className="flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full ${
-                isFilled ? "bg-rose-500" : "bg-emerald-400"
+                isFilled ? "bg-rose-500" : "bg-emerald-500"
               }`}
             />
-            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
               {listing.type === "hackathon"
                 ? "Hackathon Team"
                 : listing.type === "research"
@@ -120,8 +136,10 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+            aria-label="Close drawer"
+            className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
@@ -131,33 +149,36 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Title & Event */}
           <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-blue-400 mb-1.5">
+            <div className="flex items-center gap-2 text-xs font-mono text-[var(--accent-primary)] mb-1.5">
               <span>{listing.event}</span>
               {listing.deadline && (
                 <>
-                  <span className="text-slate-500">•</span>
-                  <span className="text-slate-400 font-sans">
+                  <span className="text-[var(--text-tertiary)]">•</span>
+                  <span className="text-[var(--text-secondary)] font-sans">
                     Deadline: {listing.deadline}
                   </span>
                 </>
               )}
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight leading-snug">
+            <h2
+              id="drawer-title"
+              className="text-lg sm:text-xl font-bold text-[var(--text-primary)] tracking-tight leading-snug"
+            >
               {listing.title}
             </h2>
           </div>
 
           {/* Slots & Status Notice */}
-          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between text-xs">
+          <div className="p-3.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-400" />
-              <span className="text-slate-300 font-medium">Open Collaborator Slots</span>
+              <Users className="w-4 h-4 text-[var(--accent-primary)]" />
+              <span className="text-[var(--text-secondary)] font-medium">Open Collaborator Slots</span>
             </div>
             <span
               className={`font-mono font-semibold px-2 py-0.5 rounded text-xs ${
                 isFilled
-                  ? "bg-rose-500/10 text-rose-300 border border-rose-500/20"
-                  : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                  ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
               }`}
             >
               {isFilled ? "Team Full" : `${listing.slots} of ${listing.totalSlots} slots vacant`}
@@ -165,30 +186,20 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
           </div>
 
           {/* Lead Information */}
-          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5 space-y-2">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">
+          <div className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] space-y-2">
+            <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
               Lead / Creator
             </span>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center font-bold text-sm text-white overflow-hidden flex-shrink-0">
-                {listing.ownerPhoto ? (
-                  <img
-                    src={listing.ownerPhoto}
-                    alt={listing.ownerName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  listing.ownerName.charAt(0)
-                )}
-              </div>
+              <Avatar src={listing.ownerPhoto} name={listing.ownerName} size={40} />
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-white">
+                  <span className="text-sm font-semibold text-[var(--text-primary)]">
                     {listing.ownerName}
                   </span>
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-[var(--text-secondary)]">
                   {listing.ownerRole} • {listing.ownerCollege}
                 </p>
               </div>
@@ -197,24 +208,24 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
 
           {/* Project Details */}
           <div>
-            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
               Project Description & Requirements
             </h4>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line font-normal">
+            <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-line font-normal">
               {listing.description}
             </p>
           </div>
 
           {/* Required Skills */}
           <div>
-            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
               Skills Wanted
             </h4>
             <div className="flex flex-wrap gap-1.5">
               {listing.skillsNeeded.map((skill, i) => (
                 <span
                   key={i}
-                  className="px-2.5 py-1 rounded-md text-xs font-mono bg-white/[0.04] text-slate-200 border border-white/10"
+                  className="px-2.5 py-1 rounded-md text-xs font-mono bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-default)]"
                 >
                   {skill}
                 </span>
@@ -224,57 +235,80 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
 
           {/* Feedback & Error alerts */}
           {errorNotice && (
-            <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <div
+              role="alert"
+              className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorNotice}</span>
             </div>
           )}
 
           {successNotice && (
-            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
-              <Check className="w-4 h-4 flex-shrink-0" />
+            <div
+              role="status"
+              className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2"
+            >
+              <Check className="w-4 h-4 shrink-0" />
               <span>{successNotice}</span>
             </div>
           )}
 
-          {/* Unmasked Email Fallback (Popup blocker friendly) */}
+          {/* Unmasked Email Fallbacks (Copy Email & Mailto) */}
           {unmaskedEmail && (
-            <div className="p-3 rounded-lg bg-white/[0.03] border border-white/10 flex items-center justify-between gap-3 text-xs">
-              <div className="truncate">
-                <span className="text-[10px] text-slate-500 block uppercase tracking-wider">
-                  Verified Contact
-                </span>
-                <span className="text-white font-mono">{unmaskedEmail}</span>
+            <div className="p-3.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] space-y-2.5 text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <div className="truncate">
+                  <span className="text-[10px] text-[var(--text-tertiary)] block uppercase tracking-wider">
+                    Verified Gmail Address
+                  </span>
+                  <span className="text-[var(--text-primary)] font-mono">{unmaskedEmail}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyEmail}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-overlay)] border border-[var(--border-default)] text-[var(--text-primary)] text-xs font-mono flex items-center gap-1.5 transition-colors min-h-[36px]"
+                >
+                  {copiedEmail ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-emerald-500">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy Email</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                onClick={handleCopyEmail}
-                className="px-2.5 py-1.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-mono flex items-center gap-1 transition-colors"
-              >
-                {copiedEmail ? (
-                  <>
-                    <Check className="w-3 h-3 text-emerald-400" />
-                    <span className="text-emerald-400">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    <span>Copy</span>
-                  </>
-                )}
-              </button>
+
+              {mailtoUrl && (
+                <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
+                  <span className="text-[var(--text-tertiary)]">Prefer default email client?</span>
+                  <a
+                    href={mailtoUrl}
+                    className="inline-flex items-center gap-1 text-[var(--accent-primary)] hover:underline font-medium"
+                  >
+                    <span>Open in Local Mail</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Fitts's Law: Large 44px+ Primary Action Button */}
-        <div className="p-4 border-t border-white/10 bg-[#12161f] sticky bottom-0">
+        {/* Primary Action Button (44px+ touch target) */}
+        <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-elevated)] sticky bottom-0">
           <button
+            type="button"
             onClick={handleConnectOnGmail}
             disabled={loading || isFilled}
             className={`w-full h-12 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-all ${
               isFilled
-                ? "bg-white/5 text-slate-500 cursor-not-allowed border border-white/5"
-                : "bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white"
+                ? "bg-[var(--bg-surface)] text-[var(--text-tertiary)] cursor-not-allowed border border-[var(--border-default)]"
+                : "bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] active:opacity-90 text-white"
             }`}
           >
             <Mail className="w-4 h-4" />
@@ -286,8 +320,8 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
                 : "Connect on Gmail"}
             </span>
           </button>
-          <span className="text-[11px] text-slate-500 block text-center mt-2">
-            Opens pre-filled message directly in your Gmail
+          <span className="text-[11px] text-[var(--text-tertiary)] block text-center mt-2">
+            Opens prefilled message directly in your verified Gmail
           </span>
         </div>
       </div>

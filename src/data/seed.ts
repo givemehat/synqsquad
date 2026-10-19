@@ -1,4 +1,4 @@
-import { Listing } from "@/types";
+import type { Listing } from "../types/index.ts";
 
 export const SEED_LISTINGS: Listing[] = [
   {

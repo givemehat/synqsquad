@@ -1,17 +1,18 @@
 export type ListingType = "hackathon" | "research" | "solo";
 
-export type ListingStatus = "open" | "filled" | "expired";
+export type ListingStatus = "open" | "filled" | "expired" | "hidden";
 
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
   photo?: string;
-  role: string; // e.g. "Frontend Engineer", "ML Researcher"
-  college: string; // e.g. "IIT Delhi", "BITS Pilani"
+  role: string;
+  college: string;
   skills: string[];
   lookingFor: "hackathon" | "research" | "both";
   bio: string;
+  consentAt: string;
   createdAt: string;
 }
 
@@ -25,10 +26,10 @@ export interface Listing {
   ownerPhoto?: string;
   type: ListingType;
   title: string;
-  event: string; // e.g. "Smart India Hackathon 2026", "NeurIPS Workshop"
-  deadline?: string; // e.g. "Nov 30, 2026"
+  event: string;
+  deadline?: string;
   skillsNeeded: string[];
-  slots: number; // Open slots available
+  slots: number;
   totalSlots: number;
   description: string;
   status: ListingStatus;
@@ -42,3 +43,26 @@ export interface ContactRecord {
   listingId: string;
   createdAt: string;
 }
+
+export interface ReportRecord {
+  id: string;
+  reporterEmail: string;
+  targetType: "listing" | "user";
+  targetId: string;
+  reason: string;
+  details?: string;
+  status: "pending" | "reviewed" | "dismissed";
+  createdAt: string;
+}
+
+export type ScreenState =
+  | "idle"
+  | "loading"
+  | "empty"
+  | "no_results"
+  | "error"
+  | "offline"
+  | "session_expired"
+  | "rate_limited"
+  | "permission_denied";
+

@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getListings, createListing } from "@/lib/db";
 import { ListingType } from "@/types";
+import { validateListingInput } from "@/lib/validations";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search")?.toLowerCase().trim();
-    const type = searchParams.get("type") as ListingType | null;
+    const type = searchParams.get("type");
     const skill = searchParams.get("skill")?.toLowerCase().trim();
     const isAuth = searchParams.get("auth") === "true";
 
     let listings = await getListings(isAuth);
 
-    if (type && type !== ("all" as any)) {
-      listings = listings.filter((l) => l.type === type);
+    if (type && type !== "all") {
+      listings = listings.filter((l) => l.type === (type as ListingType));
     }
 
     if (skill && skill !== "all") {
@@ -39,9 +40,10 @@ export async function GET(request: NextRequest) {
       count: listings.length,
       data: listings,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to load listings";
     return NextResponse.json(
-      { success: false, error: "Failed to load listings", details: error?.message },
+      { success: false, error: msg },
       { status: 500 }
     );
   }
@@ -49,37 +51,33 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const rawBody: unknown = await request.json();
 
-    if (!body.title || !body.event || !body.description || !body.ownerEmail || !body.ownerName) {
+    const validation = validateListingInput(rawBody);
+    if (!validation.success || !validation.data) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Required fields missing: title, event, description, ownerName, ownerEmail",
-        },
+        { success: false, error: validation.error || "Invalid listing input" },
         { status: 400 }
       );
     }
 
-    const skills = Array.isArray(body.skillsNeeded)
-      ? body.skillsNeeded.map((s: string) => s.trim()).filter(Boolean)
-      : [];
+    const validData = validation.data;
 
     const newListing = await createListing({
-      ownerId: body.ownerId || `usr-${Date.now().toString(36)}`,
-      ownerName: body.ownerName.trim(),
-      ownerEmail: body.ownerEmail.trim().toLowerCase(),
-      ownerCollege: body.ownerCollege?.trim() || "Independent",
-      ownerRole: body.ownerRole?.trim() || "Developer",
-      ownerPhoto: body.ownerPhoto || "",
-      type: body.type || "hackathon",
-      title: body.title.trim(),
-      event: body.event.trim(),
-      deadline: body.deadline?.trim() || "Upcoming",
-      skillsNeeded: skills.length > 0 ? skills : ["General Collaborator"],
-      slots: Number(body.slots) || 1,
-      totalSlots: Number(body.totalSlots) || Number(body.slots) || 4,
-      description: body.description.trim(),
+      ownerId: validData.ownerId,
+      ownerName: validData.ownerName,
+      ownerEmail: validData.ownerEmail,
+      ownerCollege: validData.ownerCollege || "Independent",
+      ownerRole: validData.ownerRole || "Developer",
+      ownerPhoto: validData.ownerPhoto || "",
+      type: validData.type,
+      title: validData.title,
+      event: validData.event,
+      deadline: validData.deadline || "Upcoming",
+      skillsNeeded: validData.skillsNeeded,
+      slots: validData.slots,
+      totalSlots: validData.totalSlots,
+      description: validData.description,
     });
 
     return NextResponse.json(
@@ -90,9 +88,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Failed to create listing";
     return NextResponse.json(
-      { success: false, error: "Failed to create listing", details: error?.message },
+      { success: false, error: msg },
       { status: 500 }
     );
   }
