@@ -1,8 +1,8 @@
-// End-to-end API verification test
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+// End-to-end API verification test for SynqSquad (Gmail-only architecture)
+const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:3000";
 
 async function runTests() {
-  console.log(`\n🧪 Starting SynqSquad API and E2E Test Suite against ${BASE_URL}...`);
+  console.log(`\n🧪 Running SynqSquad Gmail-Only E2E Test Suite against ${BASE_URL}...`);
   let passed = 0;
   let failed = 0;
 
@@ -17,44 +17,39 @@ async function runTests() {
   }
 
   try {
-    // 1. GET /api/listings
-    console.log("\n[Test 1] GET /api/listings");
+    // 1. GET /api/listings (Unauthenticated - Email privacy check)
+    console.log("\n[Test 1] GET /api/listings (Privacy Protection)");
     const getRes = await fetch(`${BASE_URL}/api/listings`);
     const getData = await getRes.json();
     assert(getRes.status === 200, "Status is 200 OK");
     assert(getData.success === true, "Response reports success: true");
     assert(Array.isArray(getData.data), "Data is an array");
-    assert(getData.data.length >= 6, `Seed data present (count: ${getData.data.length})`);
+    assert(getData.data.length >= 12, `12 Realistic Seed listings present (count: ${getData.data.length})`);
+    assert(getData.data[0].ownerEmail.includes("••"), "Public view masks owner email to protect privacy");
 
-    // 2. GET /api/hackathons
-    console.log("\n[Test 2] GET /api/hackathons");
-    const hckRes = await fetch(`${BASE_URL}/api/hackathons`);
-    const hckData = await hckRes.json();
-    assert(hckRes.status === 200, "Status is 200 OK");
-    assert(hckData.data.length >= 5, "Hackathon competitions loaded");
+    // 2. GET /api/listings?auth=true (Authenticated check)
+    console.log("\n[Test 2] GET /api/listings?auth=true");
+    const authGetRes = await fetch(`${BASE_URL}/api/listings?auth=true`);
+    const authGetData = await authGetRes.json();
+    assert(authGetRes.status === 200, "Status is 200 OK");
+    assert(authGetData.data[0].ownerEmail.includes("@gmail.com"), "Authenticated view provides verified Gmail for direct connect");
 
-    // 3. POST /api/listings (Create new listing)
-    console.log("\n[Test 3] POST /api/listings (Create Post)");
+    // 3. POST /api/listings (Create requirement)
+    console.log("\n[Test 3] POST /api/listings (Create Requirement)");
     const newListingPayload = {
-      title: "Test Autonomous Drone Vision for IEEE Conference",
-      targetName: "IEEE ICRA 2026",
-      type: "research",
-      domain: "Robotics & IoT",
-      creatorName: "Test Researcher",
-      creatorRole: "PhD Fellow",
-      location: "Hybrid / India",
-      description: "Testing end-to-end integration for automated team matchmaking and contact routing.",
-      rolesNeeded: ["C++ ROS2 Specialist", "Edge ML Optimizer"],
-      skills: ["C++", "ROS2", "PyTorch"],
-      currentMembersCount: 1,
-      maxMembersCount: 3,
-      isVerifiedWinner: true,
-      managePin: "998877",
-      contact: {
-        telegram: "test_researcher_bot",
-        discord: "testbot#1234",
-        email: "test.researcher@example.com",
-      },
+      title: "Test Autonomous Agricultural Drone for SIH 2026",
+      event: "Smart India Hackathon 2026",
+      deadline: "Nov 30, 2026",
+      type: "hackathon",
+      skillsNeeded: ["ROS2", "Python", "FastAPI"],
+      slots: 2,
+      totalSlots: 4,
+      description: "Testing end-to-end integration for automated team matchmaking and Gmail contact routing.",
+      ownerId: "usr-test-99",
+      ownerName: "Rajnish Singh",
+      ownerEmail: "rajnishsingh.test@gmail.com",
+      ownerCollege: "Gautam Buddha University",
+      ownerRole: "Robotics Lead",
     };
 
     const postRes = await fetch(`${BASE_URL}/api/listings`, {
@@ -65,64 +60,70 @@ async function runTests() {
     const postData = await postRes.json();
     assert(postRes.status === 201, "Status is 201 Created");
     assert(postData.data?.id?.startsWith("lst-"), "Listing assigned unique ID");
-    assert(postData.data?.managePin === "998877", "Manage PIN persisted securely");
+    assert(postData.data?.ownerEmail === "rajnishsingh.test@gmail.com", "Owner email persisted");
 
     const createdId = postData.data.id;
 
-    // 4. POST /api/boost (Self-serve monetization test)
-    console.log("\n[Test 4] POST /api/boost (Monetization Boost)");
-    const boostRes = await fetch(`${BASE_URL}/api/boost`, {
+    // 4. POST /api/contact (Gmail Connect Flow & 10/day rate limit)
+    console.log("\n[Test 4] POST /api/contact (Connect on Gmail & Rate Limit)");
+    const contactRes = await fetch(`${BASE_URL}/api/contact`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        fromUserEmail: "applicant@gmail.com",
         listingId: createdId,
-        plan: "pro",
-        paymentMethod: "UPI Instant Pay",
       }),
     });
-    const boostData = await boostRes.json();
-    assert(boostRes.status === 200, "Boost activated with 200 OK");
-    assert(boostData.data?.listing?.isBoosted === true, "Listing isBoosted flag is true");
-    assert(Boolean(boostData.data?.transactionId), "Transaction receipt generated");
+    const contactData = await contactRes.json();
+    assert(contactRes.status === 200, "Contact recorded with 200 OK");
+    assert(contactData.data?.recipientEmail === "rajnishsingh.test@gmail.com", "Recipient email resolved for Gmail compose URL");
+    assert(typeof contactData.data?.remainingToday === "number", "Daily contact quota returned");
 
-    // 5. PATCH /api/listings/[id] (PIN validation & status update)
-    console.log("\n[Test 5] PATCH /api/listings/[id] (Update status with PIN)");
-    // 5a: With wrong PIN
-    const wrongPinRes = await fetch(`${BASE_URL}/api/listings/${createdId}`, {
+    // 5. GET /api/contact?email=applicant@gmail.com (Contacted history)
+    console.log("\n[Test 5] GET /api/contact (Fetch Contacted List)");
+    const historyRes = await fetch(`${BASE_URL}/api/contact?email=applicant@gmail.com`);
+    const historyData = await historyRes.json();
+    assert(historyRes.status === 200, "Status is 200 OK");
+    assert(historyData.data.some((l) => l.id === createdId), "Listing saved to applicant's Contacted list");
+
+    // 6. PATCH /api/listings/[id] (Mark as filled by verified owner)
+    console.log("\n[Test 6] PATCH /api/listings/[id] (Mark Filled)");
+    // 6a: Unauthorized attempt
+    const unauthorizedPatch = await fetch(`${BASE_URL}/api/listings/${createdId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        managePin: "000000",
-        updates: { status: "filled" },
+        ownerEmail: "imposter@gmail.com",
+        status: "filled",
       }),
     });
-    assert(wrongPinRes.status === 400 || wrongPinRes.status === 401, "Rejects incorrect PIN");
+    assert(unauthorizedPatch.status === 403, "Rejects update from non-owner email");
 
-    // 5b: With correct PIN
-    const correctPinRes = await fetch(`${BASE_URL}/api/listings/${createdId}`, {
+    // 6b: Authorized attempt
+    const authorizedPatch = await fetch(`${BASE_URL}/api/listings/${createdId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        managePin: "998877",
-        updates: { status: "filled", currentMembersCount: 3 },
+        ownerEmail: "rajnishsingh.test@gmail.com",
+        status: "filled",
       }),
     });
-    const correctPinData = await correctPinRes.json();
-    assert(correctPinRes.status === 200, "Accepts correct PIN and updates");
-    assert(correctPinData.data?.status === "filled", "Status updated to 'filled'");
+    const authorizedPatchData = await authorizedPatch.json();
+    assert(authorizedPatch.status === 200, "Owner successfully marks listing as filled");
+    assert(authorizedPatchData.data?.status === "filled", "Status changed to 'filled'");
 
-    // 6. DELETE /api/listings/[id] (Self-service cleanup)
-    console.log("\n[Test 6] DELETE /api/listings/[id] (Self-serve delete with PIN)");
+    // 7. DELETE /api/listings/[id] (Delete by verified owner)
+    console.log("\n[Test 7] DELETE /api/listings/[id] (Delete Listing)");
     const deleteRes = await fetch(`${BASE_URL}/api/listings/${createdId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        managePin: "998877",
+        ownerEmail: "rajnishsingh.test@gmail.com",
       }),
     });
     const deleteData = await deleteRes.json();
     assert(deleteRes.status === 200, "Delete succeeded with 200 OK");
-    assert(deleteData.success === true, "Delete response success is true");
+    assert(deleteData.success === true, "Delete response reports success");
 
     console.log(`\n========================================`);
     console.log(`🎯 Test Summary: ${passed} passed, ${failed} failed`);

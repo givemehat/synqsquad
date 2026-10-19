@@ -1,43 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getListings, createListing } from "@/lib/db";
-import { ListingType, ProjectDomain } from "@/types";
+import { ListingType } from "@/types";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search")?.toLowerCase();
+    const search = searchParams.get("search")?.toLowerCase().trim();
     const type = searchParams.get("type") as ListingType | null;
-    const domain = searchParams.get("domain") as ProjectDomain | null;
-    const role = searchParams.get("role")?.toLowerCase();
+    const skill = searchParams.get("skill")?.toLowerCase().trim();
+    const isAuth = searchParams.get("auth") === "true";
 
-    let listings = await getListings();
+    let listings = await getListings(isAuth);
 
     if (type && type !== ("all" as any)) {
       listings = listings.filter((l) => l.type === type);
     }
 
-    if (domain && domain !== ("all" as any)) {
-      listings = listings.filter((l) => l.domain === domain);
+    if (skill && skill !== "all") {
+      listings = listings.filter((l) =>
+        l.skillsNeeded.some((s) => s.toLowerCase() === skill)
+      );
     }
 
     if (search) {
       listings = listings.filter(
         (l) =>
           l.title.toLowerCase().includes(search) ||
-          l.targetName.toLowerCase().includes(search) ||
+          l.event.toLowerCase().includes(search) ||
           l.description.toLowerCase().includes(search) ||
-          l.skills.some((s) => s.toLowerCase().includes(search)) ||
-          l.rolesNeeded.some((r) => r.toLowerCase().includes(search))
+          l.ownerCollege.toLowerCase().includes(search) ||
+          l.ownerName.toLowerCase().includes(search) ||
+          l.skillsNeeded.some((s) => s.toLowerCase().includes(search))
       );
     }
 
-    if (role) {
-      listings = listings.filter((l) =>
-        l.rolesNeeded.some((r) => r.toLowerCase().includes(role))
-      );
-    }
-
-    return NextResponse.json({ success: true, count: listings.length, data: listings });
+    return NextResponse.json({
+      success: true,
+      count: listings.length,
+      data: listings,
+    });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: "Failed to load listings", details: error?.message },
@@ -50,64 +51,41 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Basic server validation
-    if (!body.title || !body.targetName || !body.creatorName || !body.description) {
+    if (!body.title || !body.event || !body.description || !body.ownerEmail || !body.ownerName) {
       return NextResponse.json(
         {
           success: false,
-          error: "Required fields missing: title, targetName, creatorName, description",
+          error: "Required fields missing: title, event, description, ownerName, ownerEmail",
         },
         { status: 400 }
       );
     }
 
-    if (!body.rolesNeeded || body.rolesNeeded.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Please specify at least one role needed" },
-        { status: 400 }
-      );
-    }
-
-    // Ensure 6-digit PIN exists
-    const managePin = body.managePin || Math.floor(100000 + Math.random() * 900000).toString();
+    const skills = Array.isArray(body.skillsNeeded)
+      ? body.skillsNeeded.map((s: string) => s.trim()).filter(Boolean)
+      : [];
 
     const newListing = await createListing({
-      title: body.title.trim(),
-      targetName: body.targetName.trim(),
+      ownerId: body.ownerId || `usr-${Date.now().toString(36)}`,
+      ownerName: body.ownerName.trim(),
+      ownerEmail: body.ownerEmail.trim().toLowerCase(),
+      ownerCollege: body.ownerCollege?.trim() || "Independent",
+      ownerRole: body.ownerRole?.trim() || "Developer",
+      ownerPhoto: body.ownerPhoto || "",
       type: body.type || "hackathon",
-      domain: body.domain || "AI & Machine Learning",
-      creatorName: body.creatorName.trim(),
-      creatorRole: body.creatorRole?.trim() || "Team Lead",
-      creatorAvatar: body.creatorAvatar || "",
-      location: body.location?.trim() || "Remote",
+      title: body.title.trim(),
+      event: body.event.trim(),
+      deadline: body.deadline?.trim() || "Upcoming",
+      skillsNeeded: skills.length > 0 ? skills : ["General Collaborator"],
+      slots: Number(body.slots) || 1,
+      totalSlots: Number(body.totalSlots) || Number(body.slots) || 4,
       description: body.description.trim(),
-      rolesNeeded: Array.isArray(body.rolesNeeded)
-        ? body.rolesNeeded.map((r: string) => r.trim()).filter(Boolean)
-        : [body.rolesNeeded],
-      currentMembersCount: Number(body.currentMembersCount) || 1,
-      maxMembersCount: Number(body.maxMembersCount) || 4,
-      skills: Array.isArray(body.skills)
-        ? body.skills.map((s: string) => s.trim()).filter(Boolean)
-        : [],
-      contact: {
-        telegram: body.contact?.telegram?.replace("@", "").trim() || "",
-        discord: body.contact?.discord?.trim() || "",
-        whatsapp: body.contact?.whatsapp?.trim() || "",
-        github: body.contact?.github?.replace("https://github.com/", "").trim() || "",
-        linkedin: body.contact?.linkedin?.trim() || "",
-        email: body.contact?.email?.trim() || "",
-      },
-      isBoosted: false,
-      isVerifiedWinner: Boolean(body.isVerifiedWinner),
-      prizeOrGrantPool: body.prizeOrGrantPool?.trim() || "",
-      status: "open",
-      managePin,
     });
 
     return NextResponse.json(
       {
         success: true,
-        message: "Listing created successfully! Keep your manage PIN safe.",
+        message: "Requirement published successfully.",
         data: newListing,
       },
       { status: 201 }

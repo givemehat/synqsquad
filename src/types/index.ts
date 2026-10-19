@@ -1,61 +1,44 @@
-export type ListingType = "hackathon" | "research" | "solo_hacker";
+export type ListingType = "hackathon" | "research" | "solo";
 
-export type ProjectDomain =
-  | "AI & Machine Learning"
-  | "Web3 & Blockchain"
-  | "Full-Stack Web/Mobile"
-  | "Healthcare & BioTech"
-  | "Cybersecurity"
-  | "Robotics & IoT"
-  | "Climate & CleanTech"
-  | "Fintech & Quant";
+export type ListingStatus = "open" | "filled" | "expired";
 
-export type TeamStatus = "open" | "filled" | "closing_soon";
-
-export interface ContactInfo {
-  telegram?: string;
-  discord?: string;
-  whatsapp?: string;
-  github?: string;
-  linkedin?: string;
-  email?: string;
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  photo?: string;
+  role: string; // e.g. "Frontend Engineer", "ML Researcher"
+  college: string; // e.g. "IIT Delhi", "BITS Pilani"
+  skills: string[];
+  lookingFor: "hackathon" | "research" | "both";
+  bio: string;
+  createdAt: string;
 }
 
 export interface Listing {
   id: string;
-  title: string;
-  targetName: string; // e.g. "Smart India Hackathon 2026" or "NeurIPS 2026 Paper"
+  ownerId: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerCollege: string;
+  ownerRole: string;
+  ownerPhoto?: string;
   type: ListingType;
-  domain: ProjectDomain;
-  creatorName: string;
-  creatorRole: string;
-  creatorAvatar?: string;
-  location: string; // e.g. "Remote / Worldwide", "India / Hybrid", "San Francisco"
+  title: string;
+  event: string; // e.g. "Smart India Hackathon 2026", "NeurIPS Workshop"
+  deadline?: string; // e.g. "Nov 30, 2026"
+  skillsNeeded: string[];
+  slots: number; // Open slots available
+  totalSlots: number;
   description: string;
-  rolesNeeded: string[]; // e.g. ["PyTorch Dev", "Next.js Frontend", "UI/UX Designer"]
-  currentMembersCount: number;
-  maxMembersCount: number;
-  skills: string[];
-  contact: ContactInfo;
-  isBoosted: boolean;
-  boostExpiresAt?: string;
-  isVerifiedWinner?: boolean;
-  prizeOrGrantPool?: string; // e.g. "$50,000" or "Published Co-Authorship"
-  status: TeamStatus;
-  views: number;
-  managePin: string; // 6-digit secret PIN for zero-support editing
+  status: ListingStatus;
+  expiresAt: string;
   createdAt: string;
-  updatedAt: string;
 }
 
-export interface HackathonEvent {
+export interface ContactRecord {
   id: string;
-  name: string;
-  organizer: string;
-  type: "hackathon" | "grant";
-  mode: "Virtual" | "In-Person" | "Hybrid";
-  prizePool: string;
-  deadline: string;
-  link: string;
-  tags: string[];
+  fromUserEmail: string;
+  listingId: string;
+  createdAt: string;
 }

@@ -1,179 +1,134 @@
 "use client";
 
 import React from "react";
-import { Search, Sparkles, Flame, Users, Trophy, Zap, ShieldCheck, ArrowRight } from "lucide-react";
-import { ProjectDomain } from "@/types";
+import { Search, Shield, X, Sparkles } from "lucide-react";
 
 interface HeroProps {
   searchQuery: string;
   setSearchQuery: (q: string) => void;
-  selectedDomain: string;
-  setSelectedDomain: (d: string) => void;
+  selectedSkill: string;
+  setSelectedSkill: (skill: string) => void;
   selectedType: string;
-  setSelectedType: (t: string) => void;
-  onOpenCreate: () => void;
-  onOpenMatcher: () => void;
-  totalCount: number;
+  setSelectedType: (type: string) => void;
+  onOpenSuggestMatches: () => void;
+  resultCount: number;
 }
 
-const DOMAIN_OPTIONS: { name: ProjectDomain | "All Domains"; icon: string }[] = [
-  { name: "All Domains", icon: "🌐" },
-  { name: "AI & Machine Learning", icon: "🤖" },
-  { name: "Web3 & Blockchain", icon: "⛓️" },
-  { name: "Full-Stack Web/Mobile", icon: "⚡" },
-  { name: "Healthcare & BioTech", icon: "🧬" },
-  { name: "Cybersecurity", icon: "🛡️" },
-  { name: "Robotics & IoT", icon: "🛰️" },
-  { name: "Climate & CleanTech", icon: "🌱" },
-  { name: "Fintech & Quant", icon: "📈" },
+const COMMON_SKILLS = [
+  "All Skills",
+  "Next.js",
+  "Python",
+  "PyTorch",
+  "FastAPI",
+  "TypeScript",
+  "Solidity",
+  "C++",
+  "ROS2",
+  "Figma",
+  "Three.js",
+  "Docker",
 ];
 
 export function Hero({
   searchQuery,
   setSearchQuery,
-  selectedDomain,
-  setSelectedDomain,
+  selectedSkill,
+  setSelectedSkill,
   selectedType,
   setSelectedType,
-  onOpenCreate,
-  onOpenMatcher,
-  totalCount,
+  onOpenSuggestMatches,
+  resultCount,
 }: HeroProps) {
   return (
-    <div className="relative pt-12 pb-10 px-4 sm:px-6 lg:px-8 border-b border-slate-800/80">
-      {/* Decorative ambient gradient backdrop */}
-      <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/20 via-transparent to-transparent pointer-events-none" />
-
-      <div className="max-w-5xl mx-auto text-center relative z-10">
-        {/* Top Tagline Pill */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-900/40 text-indigo-300 border border-indigo-700/50 mb-6 shadow-inner backdrop-blur-md">
-          <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-pulse" />
-          <span>Active Team Building for SIH 2026, ETHGlobal, & NeurIPS Papers</span>
-        </div>
-
-        {/* Hero Title */}
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white mb-5 leading-[1.15]">
-          Find Your Winning Teammates &{" "}
-          <span className="bg-gradient-to-r from-indigo-400 via-sky-300 to-teal-300 bg-clip-text text-transparent">
-            Research Co-Authors
-          </span>
+    <div className="pt-8 pb-5 px-4 sm:px-6 border-b border-white/5 bg-[#090b0e]">
+      <div className="max-w-4xl mx-auto text-center space-y-4">
+        {/* Compact, solid off-white headline - No gradients */}
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-100">
+          Find collaborators for hackathons and research
         </h1>
 
-        {/* Hero Subtitle */}
-        <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-300 mb-8 leading-relaxed font-normal">
-          No walled inboxes. No endless waiting. Connect directly via <span className="text-sky-400 font-medium">Telegram</span>, <span className="text-indigo-400 font-medium">Discord</span>, and <span className="text-emerald-400 font-medium">WhatsApp</span> with verified hackers, developers, and published researchers.
+        <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto leading-normal">
+          Connect directly on Gmail with students and researchers looking for your exact skills.
         </p>
 
-        {/* Search Command Input */}
-        <div className="max-w-2xl mx-auto relative mb-6">
-          <div className="relative flex items-center rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-2xl shadow-indigo-950/50 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all duration-300">
-            <Search className="absolute left-4 w-5 h-5 text-slate-400" />
+        {/* Global Search Bar */}
+        <div className="max-w-xl mx-auto relative pt-1">
+          <div className="relative flex items-center rounded-xl bg-[#12151b] border border-white/10 shadow-sm focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+            <Search className="absolute left-3.5 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Hackathon (SIH, NASA), skill (PyTorch, Next.js), or role..."
-              className="w-full pl-12 pr-32 py-4 rounded-2xl bg-transparent text-white placeholder-slate-400 text-sm focus:outline-none"
+              placeholder="Search by college, event (SIH, NeurIPS), or skill..."
+              className="w-full pl-10 pr-24 py-2.5 rounded-xl bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="text-xs font-medium text-slate-400 hover:text-white mr-3"
+                className="text-xs text-slate-400 hover:text-white mr-2"
               >
-                Clear
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
             <button
-              onClick={onOpenMatcher}
-              className="absolute right-2.5 bg-gradient-to-r from-indigo-600 to-sky-500 hover:from-indigo-500 hover:to-sky-400 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5"
+              onClick={onOpenSuggestMatches}
+              className="absolute right-1.5 px-2.5 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 hover:text-blue-300 text-[11px] font-medium border border-blue-500/20 transition-colors flex items-center gap-1"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-              <span>AI Match</span>
+              <Sparkles className="w-3 h-3" />
+              <span>Suggest</span>
             </button>
+          </div>
+
+          {/* ONE Quiet Trust Subtext - Replaces 8 noisy cards */}
+          <div className="flex items-center justify-center gap-1.5 mt-2.5 text-[11px] text-slate-400">
+            <Shield className="w-3.5 h-3.5 text-blue-400" />
+            <span>Verified Google accounts only. You talk on Gmail, nothing else.</span>
           </div>
         </div>
 
-        {/* Quick Category Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-          {[
-            { id: "all", label: `All Listings (${totalCount})` },
-            { id: "hackathon", label: "🚀 Hackathon Teams" },
-            { id: "research", label: "🔬 Research Papers" },
-            { id: "solo_hacker", label: "⚡ Solo Developers" },
-          ].map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedType(cat.id)}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
-                selectedType === cat.id
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-1 ring-indigo-400"
-                  : "bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Domain Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-3 justify-start sm:justify-center no-scrollbar">
-          {DOMAIN_OPTIONS.map((item) => (
-            <button
-              key={item.name}
-              onClick={() => setSelectedDomain(item.name === "All Domains" ? "all" : item.name)}
-              className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${
-                (item.name === "All Domains" && selectedDomain === "all") ||
-                selectedDomain === item.name
-                  ? "bg-sky-500/20 text-sky-300 border border-sky-400/50 shadow-sm"
-                  : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80 hover:border-slate-700"
-              }`}
-            >
-              <span>{item.icon}</span>
-              <span>{item.name}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Trust Stats Bar */}
-        <div className="mt-8 pt-6 border-t border-slate-800/80 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
-          <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0">
-              <Zap className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-white">Direct Connect</p>
-              <p className="text-[11px] text-slate-400">Telegram & Discord</p>
-            </div>
+        {/* Type & Skill Filter Row - Left-aligned with no clipping */}
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-left">
+          {/* Type Segmented Control */}
+          <div className="flex items-center gap-1 bg-[#12151b] p-1 rounded-lg border border-white/5 text-xs font-medium self-start">
+            {[
+              { id: "all", label: `All (${resultCount})` },
+              { id: "hackathon", label: "Hackathons" },
+              { id: "research", label: "Research" },
+              { id: "solo", label: "Solo Devs" },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setSelectedType(t.id)}
+                className={`px-3 py-1 rounded-md transition-colors ${
+                  selectedType === t.id
+                    ? "bg-white/10 text-white font-semibold"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-white">Zero Waitlist</p>
-              <p className="text-[11px] text-slate-400">Manage via 6-digit PIN</p>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
-              <Users className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-white">Smart Matcher</p>
-              <p className="text-[11px] text-slate-400">AI finds missing skills</p>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800/60 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0">
-              <Trophy className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-white">Winner Badges</p>
-              <p className="text-[11px] text-slate-400">Verified SIH/ICLR vets</p>
-            </div>
+          {/* Skill chips scroll (Strictly left-aligned to prevent "achine Learning" cut-off) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 justify-start no-scrollbar">
+            {COMMON_SKILLS.map((sk) => {
+              const active =
+                (sk === "All Skills" && selectedSkill === "all") || selectedSkill === sk;
+              return (
+                <button
+                  key={sk}
+                  onClick={() => setSelectedSkill(sk === "All Skills" ? "all" : sk)}
+                  className={`whitespace-nowrap px-2.5 py-1 rounded-md text-[11px] font-mono transition-colors ${
+                    active
+                      ? "bg-blue-600 text-white"
+                      : "bg-[#12151b] text-slate-400 hover:text-white border border-white/5"
+                  }`}
+                >
+                  {sk}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

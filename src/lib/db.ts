@@ -1,10 +1,12 @@
 import fs from "fs/promises";
 import path from "path";
-import { Listing } from "@/types";
+import { Listing, ContactRecord, UserProfile } from "@/types";
 import { SEED_LISTINGS } from "@/data/seed";
 
 const DATA_DIR = path.join(process.cwd(), "data");
-const DB_FILE = path.join(DATA_DIR, "listings.json");
+const LISTINGS_FILE = path.join(DATA_DIR, "listings.json");
+const CONTACTS_FILE = path.join(DATA_DIR, "contacts.json");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
 
 let isInitialized = false;
 
@@ -12,140 +14,201 @@ async function ensureDb(): Promise<void> {
   if (isInitialized) return;
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
+
+    // Seed listings if missing
     try {
-      await fs.access(DB_FILE);
+      await fs.access(LISTINGS_FILE);
     } catch {
-      // File does not exist, seed it
-      await fs.writeFile(DB_FILE, JSON.stringify(SEED_LISTINGS, null, 2), "utf-8");
+      await fs.writeFile(LISTINGS_FILE, JSON.stringify(SEED_LISTINGS, null, 2), "utf-8");
     }
+
+    // Seed contacts if missing
+    try {
+      await fs.access(CONTACTS_FILE);
+    } catch {
+      await fs.writeFile(CONTACTS_FILE, JSON.stringify([], null, 2), "utf-8");
+    }
+
+    // Seed users if missing
+    try {
+      await fs.access(USERS_FILE);
+    } catch {
+      await fs.writeFile(USERS_FILE, JSON.stringify([], null, 2), "utf-8");
+    }
+
     isInitialized = true;
   } catch (err) {
     console.error("Failed to initialize database:", err);
   }
 }
 
-export async function getListings(): Promise<Listing[]> {
+export async function getListings(authenticated: boolean = false): Promise<Listing[]> {
   await ensureDb();
   try {
-    const raw = await fs.readFile(DB_FILE, "utf-8");
+    const raw = await fs.readFile(LISTINGS_FILE, "utf-8");
     const data: Listing[] = JSON.parse(raw);
-    // Sort: Boosted first, then by createdAt desc
-    return data.sort((a, b) => {
-      if (a.isBoosted && !b.isBoosted) return -1;
-      if (!a.isBoosted && b.isBoosted) return 1;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    const sorted = data.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    if (authenticated) {
+      return sorted;
+    }
+
+    // Mask emails for logged-out viewers (Privacy protection)
+    return sorted.map((l) => ({
+      ...l,
+      ownerEmail: maskEmail(l.ownerEmail),
+    }));
   } catch (err) {
     console.error("Error reading listings:", err);
     return SEED_LISTINGS;
   }
 }
 
-export async function getListingById(id: string): Promise<Listing | null> {
-  const listings = await getListings();
-  const item = listings.find((l) => l.id === id);
-  if (!item) return null;
-
-  // Increment views asynchronously without blocking
-  try {
-    item.views = (item.views || 0) + 1;
-    await saveListings(listings);
-  } catch (e) {
-    // non-fatal
-  }
-
-  return item;
+export async function getListingById(
+  id: string,
+  authenticated: boolean = false
+): Promise<Listing | null> {
+  const listings = await getListings(authenticated);
+  return listings.find((l) => l.id === id) || null;
 }
 
 export async function createListing(
-  data: Omit<Listing, "id" | "views" | "createdAt" | "updatedAt">
+  data: Omit<Listing, "id" | "createdAt" | "status" | "expiresAt">
 ): Promise<Listing> {
-  const listings = await getListings();
+  await ensureDb();
+  const raw = await fs.readFile(LISTINGS_FILE, "utf-8");
+  const listings: Listing[] = JSON.parse(raw);
+
   const id = `lst-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
-  const now = new Date().toISOString();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const newListing: Listing = {
     ...data,
     id,
-    views: 1,
-    createdAt: now,
-    updatedAt: now,
+    status: "open",
+    expiresAt,
+    createdAt: now.toISOString(),
   };
 
   listings.unshift(newListing);
-  await saveListings(listings);
+  await fs.writeFile(LISTINGS_FILE, JSON.stringify(listings, null, 2), "utf-8");
   return newListing;
 }
 
-export async function updateListing(
+export async function updateListingStatus(
   id: string,
-  pin: string,
-  updates: Partial<Omit<Listing, "id" | "managePin" | "createdAt">>
+  ownerEmail: string,
+  status: "open" | "filled"
 ): Promise<{ success: boolean; listing?: Listing; error?: string }> {
-  const listings = await getListings();
+  await ensureDb();
+  const raw = await fs.readFile(LISTINGS_FILE, "utf-8");
+  const listings: Listing[] = JSON.parse(raw);
+
   const index = listings.findIndex((l) => l.id === id);
   if (index === -1) {
     return { success: false, error: "Listing not found" };
   }
 
-  const existing = listings[index];
-  if (existing.managePin !== pin) {
-    return { success: false, error: "Invalid 6-digit manage PIN" };
+  // Verify owner
+  if (listings[index].ownerEmail.toLowerCase() !== ownerEmail.toLowerCase()) {
+    return { success: false, error: "Only the verified creator can update this listing" };
   }
 
-  const updated: Listing = {
-    ...existing,
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
-
-  listings[index] = updated;
-  await saveListings(listings);
-  return { success: true, listing: updated };
+  listings[index].status = status;
+  await fs.writeFile(LISTINGS_FILE, JSON.stringify(listings, null, 2), "utf-8");
+  return { success: true, listing: listings[index] };
 }
 
 export async function deleteListing(
   id: string,
-  pin: string
+  ownerEmail: string
 ): Promise<{ success: boolean; error?: string }> {
-  const listings = await getListings();
+  await ensureDb();
+  const raw = await fs.readFile(LISTINGS_FILE, "utf-8");
+  const listings: Listing[] = JSON.parse(raw);
+
   const index = listings.findIndex((l) => l.id === id);
   if (index === -1) {
     return { success: false, error: "Listing not found" };
   }
 
-  if (listings[index].managePin !== pin) {
-    return { success: false, error: "Invalid 6-digit manage PIN" };
+  if (listings[index].ownerEmail.toLowerCase() !== ownerEmail.toLowerCase()) {
+    return { success: false, error: "Only the verified creator can delete this listing" };
   }
 
   listings.splice(index, 1);
-  await saveListings(listings);
+  await fs.writeFile(LISTINGS_FILE, JSON.stringify(listings, null, 2), "utf-8");
   return { success: true };
 }
 
-export async function boostListing(
-  id: string,
-  days: number = 7
-): Promise<{ success: boolean; listing?: Listing; error?: string }> {
-  const listings = await getListings();
-  const index = listings.findIndex((l) => l.id === id);
-  if (index === -1) {
-    return { success: false, error: "Listing not found" };
+// Contact record & Abuse protection (10 connects / day)
+export async function recordContact(
+  fromUserEmail: string,
+  listingId: string
+): Promise<{ success: boolean; error?: string; remainingToday?: number }> {
+  await ensureDb();
+  const raw = await fs.readFile(CONTACTS_FILE, "utf-8");
+  const contacts: ContactRecord[] = JSON.parse(raw);
+
+  const now = new Date();
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  const contactsInLast24h = contacts.filter(
+    (c) =>
+      c.fromUserEmail.toLowerCase() === fromUserEmail.toLowerCase() &&
+      new Date(c.createdAt) > oneDayAgo
+  );
+
+  if (contactsInLast24h.length >= 10) {
+    return {
+      success: false,
+      error: "Daily limit reached. To prevent spam, you can connect with up to 10 creators per day.",
+      remainingToday: 0,
+    };
   }
 
-  const target = listings[index];
-  target.isBoosted = true;
-  const expires = new Date();
-  expires.setDate(expires.getDate() + days);
-  target.boostExpiresAt = expires.toISOString();
-  target.updatedAt = new Date().toISOString();
+  const record: ContactRecord = {
+    id: `cnt-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+    fromUserEmail,
+    listingId,
+    createdAt: now.toISOString(),
+  };
 
-  listings[index] = target;
-  await saveListings(listings);
-  return { success: true, listing: target };
+  contacts.push(record);
+  await fs.writeFile(CONTACTS_FILE, JSON.stringify(contacts, null, 2), "utf-8");
+
+  return {
+    success: true,
+    remainingToday: 9 - contactsInLast24h.length,
+  };
 }
 
-async function saveListings(listings: Listing[]): Promise<void> {
+export async function getContactedListings(fromUserEmail: string): Promise<Listing[]> {
   await ensureDb();
-  await fs.writeFile(DB_FILE, JSON.stringify(listings, null, 2), "utf-8");
+  try {
+    const rawContacts = await fs.readFile(CONTACTS_FILE, "utf-8");
+    const contacts: ContactRecord[] = JSON.parse(rawContacts);
+    const userContactListingIds = new Set(
+      contacts
+        .filter((c) => c.fromUserEmail.toLowerCase() === fromUserEmail.toLowerCase())
+        .map((c) => c.listingId)
+    );
+
+    const rawListings = await fs.readFile(LISTINGS_FILE, "utf-8");
+    const listings: Listing[] = JSON.parse(rawListings);
+
+    return listings.filter((l) => userContactListingIds.has(l.id));
+  } catch {
+    return [];
+  }
+}
+
+function maskEmail(email: string): string {
+  if (!email || !email.includes("@")) return "••••@gmail.com";
+  const [local, domain] = email.split("@");
+  if (local.length <= 2) return `${local}•••@${domain}`;
+  return `${local.slice(0, 2)}••••${local.slice(-1)}@${domain}`;
 }
