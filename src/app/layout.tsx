@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     description:
       "Zero noise, verified Google accounts. One person finds one person and connects directly on Gmail.",
   },
+  verification: {
+    google: "google61d96b399c5e87d8",
+  },
 };
 
 export default function RootLayout({
