@@ -4,14 +4,26 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Listing } from "@/types";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
+import { MetricsBar } from "@/components/MetricsBar";
 import { ListingCard } from "@/components/ListingCard";
+import { ListingTableView } from "@/components/ListingTableView";
+import { ListingDetailDrawer } from "@/components/ListingDetailDrawer";
+import { CommandPalette } from "@/components/CommandPalette";
 import { CreateListingModal } from "@/components/CreateListingModal";
 import { SmartMatcherModal } from "@/components/SmartMatcherModal";
 import { BoostModal } from "@/components/BoostModal";
 import { ManageListingModal } from "@/components/ManageListingModal";
 import { HackathonRadar } from "@/components/HackathonRadar";
 import { Footer } from "@/components/Footer";
-import { Sparkles, PlusCircle, Filter, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  Sparkles,
+  Plus,
+  RefreshCw,
+  LayoutGrid,
+  Table as TableIcon,
+  Flame,
+  Search,
+} from "lucide-react";
 
 export default function HomePage() {
   const [listings, setListings] = useState<Listing[]>([]);
@@ -20,14 +32,17 @@ export default function HomePage() {
   const [selectedDomain, setSelectedDomain] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [activeTab, setActiveTab] = useState("all");
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  // Modals state
+  // Modals & Panels state
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isMatcherOpen, setIsMatcherOpen] = useState(false);
+  const [selectedListingForDetail, setSelectedListingForDetail] = useState<Listing | null>(null);
   const [selectedListingForBoost, setSelectedListingForBoost] = useState<Listing | null>(null);
   const [selectedListingForManage, setSelectedListingForManage] = useState<Listing | null>(null);
 
-  // Fetch listings from API
+  // Fetch listings
   const fetchListings = async () => {
     setLoading(true);
     try {
@@ -47,21 +62,19 @@ export default function HomePage() {
     fetchListings();
   }, []);
 
-  // Filter listings based on current search and pills
+  // Filter listings
   const filteredListings = useMemo(() => {
     return listings.filter((l) => {
-      // Type filter (from navbar tab or hero filter)
-      const targetType = activeTab === "hackathon" || activeTab === "research" ? activeTab : selectedType;
+      const targetType =
+        activeTab === "hackathon" || activeTab === "research" ? activeTab : selectedType;
       if (targetType !== "all" && l.type !== targetType) {
         return false;
       }
 
-      // Domain filter
       if (selectedDomain !== "all" && l.domain !== selectedDomain) {
         return false;
       }
 
-      // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesTitle = l.title.toLowerCase().includes(q);
@@ -79,6 +92,41 @@ export default function HomePage() {
       return true;
     });
   }, [listings, activeTab, selectedType, selectedDomain, searchQuery]);
+
+  // Actions from Command Palette
+  const handleCommandAction = (actionId: string) => {
+    switch (actionId) {
+      case "toggle_palette":
+        setIsCommandPaletteOpen((prev) => !prev);
+        break;
+      case "post_requirement":
+        setIsCreateOpen(true);
+        break;
+      case "open_matcher":
+        setIsMatcherOpen(true);
+        break;
+      case "filter_all":
+        setActiveTab("all");
+        setSelectedType("all");
+        break;
+      case "filter_hackathon":
+        setActiveTab("hackathon");
+        setSelectedType("hackathon");
+        break;
+      case "filter_research":
+        setActiveTab("research");
+        setSelectedType("research");
+        break;
+      case "view_radar":
+        setActiveTab("radar");
+        break;
+      case "filter_boosted":
+        setSearchQuery("urgent");
+        break;
+      default:
+        break;
+    }
+  };
 
   const handleListingCreated = (newListing: Listing) => {
     setListings((prev) => [newListing, ...prev]);
@@ -107,7 +155,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#090b0e] text-slate-100">
       {/* Top Navigation */}
       <Navbar
         onOpenCreate={() => setIsCreateOpen(true)}
@@ -123,13 +171,13 @@ export default function HomePage() {
         }}
       />
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <main className="flex-1">
         {activeTab === "radar" ? (
           <HackathonRadar onFindTeamForEvent={handleFindTeamForEvent} />
         ) : (
           <>
-            {/* Hero & Search Header */}
+            {/* Hero Section */}
             <Hero
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -142,57 +190,92 @@ export default function HomePage() {
               totalCount={listings.length}
             />
 
-            {/* Listings Grid */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-              <div className="flex items-center justify-between mb-6">
+            {/* Workbench Feed Container */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {/* Metrics Strip */}
+              <MetricsBar listings={listings} />
+
+              {/* Toolbar & View Controls */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
                 <div>
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <span>Active Postings</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold">
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>Active Team Requisitions</span>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-white/5 text-slate-300">
                       {filteredListings.length}
                     </span>
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    Showing teams currently accepting collaborators and co-authors
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Click any squad to inspect full technical scope and open channels
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between">
+                  {/* View Switcher */}
+                  <div className="flex items-center bg-[#11141a] p-1 rounded-lg border border-white/10">
+                    <button
+                      onClick={() => setViewMode("grid")}
+                      className={`p-1.5 rounded-md text-xs transition-colors ${
+                        viewMode === "grid"
+                          ? "bg-white/10 text-white"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                      title="Grid View"
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setViewMode("table")}
+                      className={`p-1.5 rounded-md text-xs transition-colors ${
+                        viewMode === "table"
+                          ? "bg-white/10 text-white"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                      title="Table View (Power Users)"
+                    >
+                      <TableIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Refresh Button */}
                   <button
                     onClick={fetchListings}
-                    className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
-                    title="Refresh postings"
+                    className="p-2 rounded-lg bg-[#11141a] border border-white/10 text-slate-400 hover:text-white transition-colors"
+                    title="Refresh feed"
                   >
-                    <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
                   </button>
+
+                  {/* Post CTA */}
                   <button
                     onClick={() => setIsCreateOpen(true)}
-                    className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30 border border-indigo-500/30 text-xs font-semibold transition-all"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-all"
                   >
-                    <PlusCircle className="w-3.5 h-3.5" />
-                    <span>Post Listing</span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Post Requirement</span>
                   </button>
                 </div>
               </div>
 
               {/* Feed Content */}
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {[1, 2, 3, 4, 5, 6].map((i) => (
                     <div
                       key={i}
-                      className="h-72 rounded-2xl bg-slate-900/60 border border-slate-800 animate-pulse"
+                      className="h-64 rounded-2xl bg-[#0e1117] border border-white/5 animate-pulse"
                     />
                   ))}
                 </div>
               ) : filteredListings.length === 0 ? (
-                <div className="text-center py-16 px-4 rounded-3xl bg-slate-900/40 border border-slate-800/80 max-w-md mx-auto">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400 mb-3">
-                    <AlertCircle className="w-6 h-6" />
+                <div className="text-center py-20 px-4 rounded-2xl bg-[#0e1117] border border-white/5 max-w-md mx-auto">
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-slate-400 mb-3">
+                    <Search className="w-5 h-5" />
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-1">No postings match your criteria</h3>
+                  <h3 className="text-sm font-bold text-white mb-1">
+                    No postings matched current filters
+                  </h3>
                   <p className="text-xs text-slate-400 mb-5">
-                    Be the pioneer: Post your project requirement or clear your search filters.
+                    Clear your filters or publish your project to recruit the first candidates.
                   </p>
                   <div className="flex items-center justify-center gap-3">
                     <button
@@ -201,29 +284,41 @@ export default function HomePage() {
                         setSelectedDomain("all");
                         setSelectedType("all");
                       }}
-                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-all"
+                      className="px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold transition-all"
                     >
                       Reset Filters
                     </button>
                     <button
                       onClick={() => setIsCreateOpen(true)}
-                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all"
+                      className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all"
                     >
                       Post Requirement
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              ) : viewMode === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filteredListings.map((listing) => (
-                    <ListingCard
+                    <div
                       key={listing.id}
-                      listing={listing}
-                      onOpenBoost={(item) => setSelectedListingForBoost(item)}
-                      onOpenManage={(item) => setSelectedListingForManage(item)}
-                    />
+                      onClick={() => setSelectedListingForDetail(listing)}
+                      className="cursor-pointer"
+                    >
+                      <ListingCard
+                        listing={listing}
+                        onOpenBoost={(item) => setSelectedListingForBoost(item)}
+                        onOpenManage={(item) => setSelectedListingForManage(item)}
+                      />
+                    </div>
                   ))}
                 </div>
+              ) : (
+                <ListingTableView
+                  listings={filteredListings}
+                  onSelectListing={(item) => setSelectedListingForDetail(item)}
+                  onOpenBoost={(item) => setSelectedListingForBoost(item)}
+                  onOpenManage={(item) => setSelectedListingForManage(item)}
+                />
               )}
             </div>
           </>
@@ -232,6 +327,21 @@ export default function HomePage() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Slide-over Detail Drawer */}
+      <ListingDetailDrawer
+        listing={selectedListingForDetail}
+        onClose={() => setSelectedListingForDetail(null)}
+        onOpenBoost={(item) => setSelectedListingForBoost(item)}
+        onOpenManage={(item) => setSelectedListingForManage(item)}
+      />
+
+      {/* Command Palette (Cmd/Ctrl + K) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onSelectAction={handleCommandAction}
+      />
 
       {/* Modals */}
       <CreateListingModal
