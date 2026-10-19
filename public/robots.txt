@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /profile
 
-Sitemap: https://synqsquad.app/sitemap.xml
+Sitemap: https://synqsquad.vercel.app/sitemap.xml
