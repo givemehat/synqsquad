@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Shield, ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Privacy Policy | SynqSquad",
+  title: "Privacy Policy | RIVQ",
   description:
-    "How SynqSquad handles Google user data, DPDP Act 2023 compliance, GDPR rights, and Gmail contact privacy.",
+    "How RIVQ handles Google user data, DPDP Act 2023 compliance, GDPR rights, and Gmail contact privacy.",
 };
 
 export default function PrivacyPolicyPage() {
@@ -36,14 +36,14 @@ export default function PrivacyPolicyPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">1. Introduction & Overview</h2>
             <p>
-              SynqSquad is an introduction platform connecting students and developers for hackathons and academic research collaborations. Our core principle is privacy by default: we do not sell data, we do not host closed chat servers, and we never expose your verified email address to public web scrapers.
+              RIVQ is an introduction platform connecting students and developers for hackathons and academic research collaborations. Our core principle is privacy by default: we do not sell data, we do not host closed chat servers, and we never expose your verified email address to public web scrapers.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">2. Google API Services & Limited Use Disclosure</h2>
             <p>
-              SynqSquad’s use and transfer to any other app of information received from Google APIs will adhere to the{" "}
+              RIVQ’s use and transfer to any other app of information received from Google APIs will adhere to the{" "}
               <a
                 href="https://developers.google.com/terms/api-services-user-data-policy"
                 target="_blank"

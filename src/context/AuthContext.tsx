@@ -12,22 +12,6 @@ import { UserProfile } from "@/types";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "@/lib/supabase-browser";
 import { authFetch } from "@/lib/api-client";
 
-function makeTestJwt(user: UserProfile): string {
-  try {
-    const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" })).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-    const payload = btoa(JSON.stringify({
-      sub: user.id,
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
-    })).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-    return `${header}.${payload}.test_sig`;
-  } catch {
-    return "";
-  }
-}
-
 interface AuthContextType {
   user: UserProfile | null;
   isAuthModalOpen: boolean;
@@ -50,20 +34,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEMO_GOOGLE_USER: UserProfile = {
-  id: "usr-google-verified-01",
-  name: "Rajnish Singh",
-  email: "rajnishsingh.dev@gmail.com",
-  photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80",
-  role: "Full-Stack & ML Engineer",
-  college: "Gautam Buddha University",
-  skills: ["Next.js", "Python", "PyTorch", "Tailwind CSS"],
-  lookingFor: "both",
-  bio: "Building AI applications and edge systems. Looking for hackathon partners.",
-  consentAt: "2026-10-19T18:00:00.000Z",
-  createdAt: "2026-10-19T18:00:00.000Z",
-};
-
 function subscribeAuth(callback: () => void) {
   window.addEventListener("storage", callback);
   window.addEventListener("synqsquad_auth_change", callback);
@@ -73,9 +43,14 @@ function subscribeAuth(callback: () => void) {
   };
 }
 
+function notifyAuthChange() {
+  window.dispatchEvent(new Event("rivq_auth_change"));
+  window.dispatchEvent(new Event("synqsquad_auth_change"));
+}
+
 function getUserSnapshot(): string {
   try {
-    return localStorage.getItem("synqsquad_user") || "";
+    return localStorage.getItem("rivq_user") || localStorage.getItem("synqsquad_user") || "";
   } catch {
     return "";
   }
@@ -87,7 +62,7 @@ function getUserServerSnapshot(): string {
 
 function getContactsSnapshot(): string {
   try {
-    return localStorage.getItem("synqsquad_contacted") || "";
+    return localStorage.getItem("rivq_contacted") || localStorage.getItem("synqsquad_contacted") || "";
   } catch {
     return "";
   }
@@ -99,7 +74,7 @@ function getContactsServerSnapshot(): string {
 
 function getBlockedSnapshot(): string {
   try {
-    return localStorage.getItem("synqsquad_blocked") || "";
+    return localStorage.getItem("rivq_blocked") || localStorage.getItem("synqsquad_blocked") || "";
   } catch {
     return "";
   }
@@ -159,8 +134,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           createdAt: u.created_at || new Date().toISOString(),
         };
         try {
+          localStorage.setItem("rivq_user", JSON.stringify(profile));
           localStorage.setItem("synqsquad_user", JSON.stringify(profile));
-          window.dispatchEvent(new Event("synqsquad_auth_change"));
+          notifyAuthChange();
         } catch {}
       }
     });
@@ -171,8 +147,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT") {
         try {
+          localStorage.removeItem("rivq_user");
           localStorage.removeItem("synqsquad_user");
-          window.dispatchEvent(new Event("synqsquad_auth_change"));
+          notifyAuthChange();
         } catch {}
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
         // Token refreshed successfully
@@ -192,8 +169,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           createdAt: u.created_at || new Date().toISOString(),
         };
         try {
+          localStorage.setItem("rivq_user", JSON.stringify(profile));
           localStorage.setItem("synqsquad_user", JSON.stringify(profile));
-          window.dispatchEvent(new Event("synqsquad_auth_change"));
+          notifyAuthChange();
         } catch {}
       }
     });
@@ -241,7 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoggingIn(true);
       setLoginError(null);
 
-      // 3. If Supabase is configured, use official Supabase Google OAuth
+      // 3. Initiate official Supabase Google OAuth
       if (isSupabaseBrowserConfigured()) {
         const supabase = getSupabaseBrowserClient();
         if (supabase) {
@@ -273,36 +251,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 4. Fallback: Local demo Google verification (instant for development & testing)
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 350));
-        const verifiedUser: UserProfile = {
-          ...DEMO_GOOGLE_USER,
-          ...profileData,
-          id: `usr-google-${Date.now().toString(36)}`,
-          consentAt: new Date().toISOString(),
-        };
-
-        const token = makeTestJwt(verifiedUser);
-        localStorage.setItem("synqsquad_token", token);
-        localStorage.setItem("synqsquad_user", JSON.stringify(verifiedUser));
-        window.dispatchEvent(new Event("synqsquad_auth_change"));
-
-        setIsAuthModalOpen(false);
-        setIsLoggingIn(false);
-        setLoginError(null);
-
-        if (pendingAction) {
-          pendingAction();
-          setPendingAction(null);
-        }
-        return true;
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Authentication failed";
-        setLoginError(msg);
-        setIsLoggingIn(false);
-        return false;
-      }
+      setLoginError("Authentication service is not configured. Please contact support.");
+      setIsLoggingIn(false);
+      return false;
     },
     [pendingAction]
   );
@@ -315,9 +266,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     }
     try {
+      localStorage.removeItem("rivq_user");
+      localStorage.removeItem("rivq_token");
       localStorage.removeItem("synqsquad_user");
       localStorage.removeItem("synqsquad_token");
-      window.dispatchEvent(new Event("synqsquad_auth_change"));
+      notifyAuthChange();
     } catch {}
   }, []);
 
@@ -326,8 +279,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!user) return;
       const nextUser = { ...user, ...updated };
       try {
+        localStorage.setItem("rivq_user", JSON.stringify(nextUser));
         localStorage.setItem("synqsquad_user", JSON.stringify(nextUser));
-        window.dispatchEvent(new Event("synqsquad_auth_change"));
+        notifyAuthChange();
       } catch {}
 
       // Asynchronously upsert to database with authenticated session
@@ -342,12 +296,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const addContactedId = useCallback((id: string) => {
     try {
-      const stored = localStorage.getItem("synqsquad_contacted");
+      const stored = localStorage.getItem("rivq_contacted") || localStorage.getItem("synqsquad_contacted");
       const current: string[] = stored ? JSON.parse(stored) : [];
       if (!current.includes(id)) {
         const next = [id, ...current];
+        localStorage.setItem("rivq_contacted", JSON.stringify(next));
         localStorage.setItem("synqsquad_contacted", JSON.stringify(next));
-        window.dispatchEvent(new Event("synqsquad_auth_change"));
+        notifyAuthChange();
       }
     } catch {}
   }, []);
@@ -359,8 +314,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.blockedUsers)) {
+          localStorage.setItem("rivq_blocked", JSON.stringify(data.blockedUsers));
           localStorage.setItem("synqsquad_blocked", JSON.stringify(data.blockedUsers));
-          window.dispatchEvent(new Event("synqsquad_auth_change"));
+          notifyAuthChange();
         }
       })
       .catch(() => {});
@@ -370,12 +326,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (emailToBlock: string) => {
       const lower = emailToBlock.toLowerCase();
       try {
-        const stored = localStorage.getItem("synqsquad_blocked");
+        const stored = localStorage.getItem("rivq_blocked") || localStorage.getItem("synqsquad_blocked");
         const current: string[] = stored ? JSON.parse(stored) : [];
         if (!current.includes(lower)) {
           const next = [lower, ...current];
+          localStorage.setItem("rivq_blocked", JSON.stringify(next));
           localStorage.setItem("synqsquad_blocked", JSON.stringify(next));
-          window.dispatchEvent(new Event("synqsquad_auth_change"));
+          notifyAuthChange();
         }
       } catch {}
 
@@ -394,11 +351,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (emailToUnblock: string) => {
       const lower = emailToUnblock.toLowerCase();
       try {
-        const stored = localStorage.getItem("synqsquad_blocked");
+        const stored = localStorage.getItem("rivq_blocked") || localStorage.getItem("synqsquad_blocked");
         const current: string[] = stored ? JSON.parse(stored) : [];
         const next = current.filter((e) => e !== lower);
+        localStorage.setItem("rivq_blocked", JSON.stringify(next));
         localStorage.setItem("synqsquad_blocked", JSON.stringify(next));
-        window.dispatchEvent(new Event("synqsquad_auth_change"));
+        notifyAuthChange();
       } catch {}
 
       if (user?.email) {

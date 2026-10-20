@@ -1,4 +1,4 @@
-// Unit and Security tests for SynqSquad
+// Unit and Security tests for RIVQ
 // Validates Supabase RLS logic, ownership rules, email privacy masking, and rate limits
 
 import { validateListingInput, detectSpam, sanitizeText } from "../src/lib/validations.ts";

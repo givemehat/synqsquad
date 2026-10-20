@@ -125,6 +125,8 @@ async function main() {
     await client.send("Page.addScriptToEvaluateOnNewDocument", {
       source: `
         try {
+          localStorage.setItem('rivq_user', JSON.stringify(${JSON.stringify(SEED_USER)}));
+          localStorage.setItem('rivq_blocked', JSON.stringify(['demo.blocked.user@example.com']));
           localStorage.setItem('synqsquad_user', JSON.stringify(${JSON.stringify(SEED_USER)}));
           localStorage.setItem('synqsquad_blocked', JSON.stringify(['demo.blocked.user@example.com']));
         } catch(e) {}

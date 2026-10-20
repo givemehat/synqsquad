@@ -25,7 +25,7 @@ function subscribeTheme(callback: () => void) {
 
 function getThemeSnapshot(): Theme {
   try {
-    const stored = localStorage.getItem("synqsquad_theme");
+    const stored = localStorage.getItem("rivq_theme") || localStorage.getItem("synqsquad_theme");
     if (stored === "light" || stored === "dark" || stored === "system") {
       return stored as Theme;
     }
@@ -60,7 +60,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = (newTheme: Theme) => {
     try {
-      localStorage.setItem("synqsquad_theme", newTheme);
+      localStorage.setItem("rivq_theme", newTheme);
       window.dispatchEvent(new Event("storage"));
     } catch {
       // ignore

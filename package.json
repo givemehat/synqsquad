@@ -1,5 +1,5 @@
 {
-  "name": "synqsquad",
+  "name": "rivq",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "test": "node --env-file-if-exists=.env.test.local --env-file-if-exists=.env.local --test --test-concurrency=1 tests/*.test.mjs",
     "test:e2e": "node tests/api-e2e.mjs",
     "seed:supabase": "node --experimental-strip-types scripts/seed-supabase.mjs"
   },

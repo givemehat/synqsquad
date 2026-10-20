@@ -21,7 +21,7 @@ export async function getAuthHeader(): Promise<string | null> {
   }
 
   try {
-    const fallbackToken = localStorage.getItem("synqsquad_token");
+    const fallbackToken = localStorage.getItem("rivq_token") || localStorage.getItem("synqsquad_token");
     if (fallbackToken) {
       return `Bearer ${fallbackToken}`;
     }

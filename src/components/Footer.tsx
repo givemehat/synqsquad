@@ -11,11 +11,11 @@ export function Footer() {
             <div className="w-6 h-6 rounded-md overflow-hidden border border-[var(--border-subtle)] bg-black flex items-center justify-center">
               <img
                 src="/logo.png"
-                alt="SynqSquad"
+                alt="RIVQ"
                 className="w-full h-full object-cover"
               />
             </div>
-            <span className="font-semibold text-[var(--text-primary)]">SynqSquad</span>
+            <span className="font-semibold text-[var(--text-primary)]">RIVQ</span>
             <span className="text-[var(--text-tertiary)]">•</span>
             <span className="text-[var(--text-secondary)]">
               Direct collaborator matchmaking on verified Gmail.
@@ -124,7 +124,7 @@ export function Footer() {
         </div>
 
         <div className="pt-4 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between text-[11px] gap-2">
-          <span>&copy; {new Date().getFullYear()} SynqSquad. Neutral technological intermediary.</span>
+          <span>&copy; {new Date().getFullYear()} RIVQ. Neutral technological intermediary.</span>
           <span className="font-mono text-[10px]">DPDP Act 2023 & GDPR Compliant</span>
         </div>
       </div>

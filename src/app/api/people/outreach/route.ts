@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Build prefilled Gmail compose URL
-    const subject = `[SynqSquad] Teaming up: Collaboration Outreach from ${auth.user.name || "a fellow hacker"}`;
-    const body = `Hi ${targetProfile.displayName},\n\nI discovered your profile on SynqSquad (${targetProfile.headline}).\n\n${message}\n\nLooking forward to collaborating on Gmail!\n\nBest,\n${auth.user.name || "A fellow teammate"}\n${auth.user.email}`;
+    const subject = `[RIVQ] Teaming up: Collaboration Outreach from ${auth.user.name || "a fellow hacker"}`;
+    const body = `Hi ${targetProfile.displayName},\n\nI discovered your profile on RIVQ (${targetProfile.headline}).\n\n${message}\n\nLooking forward to collaborating on Gmail!\n\nBest,\n${auth.user.name || "A fellow teammate"}\n${auth.user.email}`;
 
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
       targetProfile.email

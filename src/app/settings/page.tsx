@@ -13,7 +13,7 @@ function subscribePrompt(callback: () => void) {
 
 function getPromptSnapshot(): boolean {
   try {
-    const stored = localStorage.getItem("synqsquad_compose_prompt");
+    const stored = localStorage.getItem("rivq_compose_prompt") || localStorage.getItem("synqsquad_compose_prompt");
     return stored !== null ? stored === "true" : true;
   } catch {
     return true;
@@ -37,7 +37,7 @@ export default function SettingsPage() {
   const handleToggleComposePrompt = () => {
     const nextVal = !composePrompt;
     try {
-      localStorage.setItem("synqsquad_compose_prompt", String(nextVal));
+      localStorage.setItem("rivq_compose_prompt", String(nextVal));
       window.dispatchEvent(new Event("storage"));
     } catch {
       // ignore
@@ -74,7 +74,7 @@ export default function SettingsPage() {
               Appearance
             </h2>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              Choose your interface color scheme. SynqSquad uses warm near-black for dark mode and high-contrast editorial gray for light mode.
+              Choose your interface color scheme. RIVQ uses warm near-black for dark mode and high-contrast editorial gray for light mode.
             </p>
           </div>
 
@@ -129,7 +129,7 @@ export default function SettingsPage() {
                 <span>Outreach & Email Hygiene</span>
               </h2>
               <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-                SynqSquad does not send marketing digests, uninvited newsletters, or intermediary emails. All communication happens exclusively between verified Google accounts on Gmail.
+                RIVQ does not send marketing digests, uninvited newsletters, or intermediary emails. All communication happens exclusively between verified Google accounts on Gmail.
               </p>
             </div>
             {savedNotice && (

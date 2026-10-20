@@ -6,7 +6,7 @@ Use this comprehensive reference when completing the required declaration forms 
 
 ## 1. App Access (Mandatory Review Credentials)
 
-Because SynqSquad requires Google Sign-In to post requisitions or reveal unmasked Gmail addresses to prevent scraper abuse, Google Play reviewers **must** be provided credentials or test instructions to access all features.
+Because RIVQ requires Google Sign-In to post requisitions or reveal unmasked Gmail addresses to prevent scraper abuse, Google Play reviewers **must** be provided credentials or test instructions to access all features.
 
 In Google Play Console, go to **App content** > **App access** and select:
 **"All or some functionality is restricted"** > Click **"Add new instructions"**:
@@ -14,9 +14,9 @@ In Google Play Console, go to **App content** > **App access** and select:
 | Field | Reviewer Instruction Value |
 |---|---|
 | **Title** | Google Reviewer Sign-In Access |
-| **User name / Email** | `synqsquad.reviewer@gmail.com` *(or your test Google account)* |
+| **User name / Email** | `rivq.reviewer@gmail.com` *(or your test Google account)* |
 | **Password** | *(Provide the app password or note: "OAuth Test Mode")* |
-| **Explanation / Instructions for Reviewer** | SynqSquad uses Google Identity Services (OAuth 2.0) with basic profile and email scopes (`email`, `profile`). Reviewers can tap the "Sign in with Google" button in the top navigation bar or inside any listing card drawer. When prompted, select the configured test Google account. Once authenticated, reviewers have unrestricted access to: (1) create hackathon/research requisitions, (2) reveal unmasked collaborator emails and trigger Gmail compose drafts, (3) export user data in JSON format, and (4) execute immediate permanent account erasure in Account Settings. Browsing open listings and offline caching are available immediately without login. |
+| **Explanation / Instructions for Reviewer** | RIVQ uses Google Identity Services (OAuth 2.0) with basic profile and email scopes (`email`, `profile`). Reviewers can tap the "Sign in with Google" button in the top navigation bar or inside any listing card drawer. When prompted, select the configured test Google account. Once authenticated, reviewers have unrestricted access to: (1) create hackathon/research requisitions, (2) reveal unmasked collaborator emails and trigger Gmail compose drafts, (3) export user data in JSON format, and (4) execute immediate permanent account erasure in Account Settings. Browsing open listings and offline caching are available immediately without login. |
 
 ---
 
@@ -116,7 +116,7 @@ In Google Play Console, go to **App content** > **Ads**:
 In Google Play Console, go to **App content** > **Financial features**:
 
 * **Does your app provide financial features (banking, loans, crypto trading, wallets)?**  
-  👉 **No financial features**. (SynqSquad strictly facilitates hackathon and research paper team collaboration).
+  👉 **No financial features**. (RIVQ strictly facilitates hackathon and research paper team collaboration).
 
 ---
 
@@ -125,7 +125,7 @@ In Google Play Console, go to **App content** > **Financial features**:
 In Google Play Console, go to **App content** > **Government apps**:
 
 * **Is your app developed by or on behalf of a government entity?**  
-  👉 **No**. (SynqSquad is an independent technological platform).
+  👉 **No**. (RIVQ is an independent technological platform).
 
 ---
 

@@ -1,4 +1,4 @@
-# Proguard rules for SynqSquad Trusted Web Activity
+# Proguard rules for RIVQ Trusted Web Activity
 -keepattributes *Annotation*
 -keepclassmembers class * {
     @org.chromium.base.annotations.CalledByNative <methods>;

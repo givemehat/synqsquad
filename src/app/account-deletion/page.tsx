@@ -67,7 +67,7 @@ export default function AccountDeletionPage() {
           className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors min-h-[36px]"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to SynqSquad</span>
+          <span>Back to RIVQ</span>
         </Link>
 
         {/* Card Header */}
@@ -90,7 +90,7 @@ export default function AccountDeletionPage() {
           <div className="space-y-3 text-xs text-[var(--text-secondary)] leading-relaxed">
             <p>
               In compliance with Google Play User Data policies, India&apos;s DPDP Act 2023, and GDPR,
-              SynqSquad provides this public web portal so users can request the complete and permanent
+              RIVQ provides this public web portal so users can request the complete and permanent
               deletion of their account and associated data without needing to install or sign into the app.
             </p>
             <div className="p-3.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] space-y-1.5">

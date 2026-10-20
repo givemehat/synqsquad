@@ -1,21 +1,21 @@
 # ==============================================================================
-# SynqSquad — Google Play Store Listing Metadata
+# RIVQ — Google Play Store Listing Metadata
 # ==============================================================================
 
 [APP NAME] (Maximum 30 characters)
-SynqSquad: Teammate Finder
-(Character count: 26 / 30)
+RIVQ: Teammate Finder
+(Character count: 21 / 30)
 
 [SHORT DESCRIPTION] (Maximum 80 characters)
 Find hackathon & research teammates or be discovered. Connect on Gmail.
 (Character count: 71 / 80)
 
 [FULL DESCRIPTION] (Maximum 4000 characters)
-SynqSquad is a focused teammate discovery platform built for university students, independent developers, and academic researchers.
+RIVQ is a focused teammate discovery platform built for university students, independent developers, and academic researchers.
 
 When tackling a major hackathon (such as Smart India Hackathon or ETHGlobal) or drafting an academic paper (for conferences like NeurIPS, ICRA, or ACL), the hardest challenge is rarely the idea—it is finding one reliable person with the exact complementary technical skill you need.
 
-SynqSquad solves this with two-way discovery:
+RIVQ solves this with two-way discovery:
 1. Person → Team: Browse open requisitions for hackathons and research projects and connect directly.
 2. Team → Person: Explore the Talent Directory to discover skilled builders and researchers open to collaborate, and invite them to your squad.
 
@@ -44,7 +44,7 @@ Users can report requisitions or talent profiles for spam or inappropriate conte
 7. Full User Control & Data Rights
 Under India's DPDP Act 2023 and GDPR, you have complete sovereignty over your data. Download a machine-readable JSON export of your profile, listings, and outreach history anytime, or erase your account and all associated records permanently in one click.
 
-Whether you need a systems programmer for an embedded robotics hackathon or a co-author experienced in PyTorch for an ML manuscript, SynqSquad helps you find your teammate with zero friction.
+Whether you need a systems programmer for an embedded robotics hackathon or a co-author experienced in PyTorch for an ML manuscript, RIVQ helps you find your teammate with zero friction.
 (Character count: 3012 / 4000)
 
 ---
@@ -70,8 +70,8 @@ Community Guidelines URL: https://synqsquad.vercel.app/guidelines
 
 ---
 
-[RELEASE NOTES — Version 1.1.0 (versionCode 2)]
-Welcome to the production launch of SynqSquad on Android:
+[RELEASE NOTES — Version 1.3.0 (versionCode 4)]
+Welcome to the production launch of RIVQ on Android:
 • New Two-Way Discovery: browse open team requisitions or be discovered via the Talent Directory (/people).
 • Instant collaboration outreach with pre-filled Gmail compose links.
 • Strict email privacy: creator contact details remain masked until authenticated connect.

@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ArrowLeft, Mail, MapPin, ShieldCheck, Flag } from "lucide-react";
 
 export const metadata = {
-  title: "Support & Grievances | SynqSquad",
-  description: "Get in touch with the SynqSquad team for support, grievances, or inquiries under DPDP Act 2023.",
+  title: "Support & Grievances | RIVQ",
+  description: "Get in touch with the RIVQ team for support, grievances, or inquiries under DPDP Act 2023.",
 };
 
 export default function SupportPage() {

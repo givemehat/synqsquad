@@ -1,0 +1,6 @@
+Contact: mailto:rajnishsingh.work@gmail.com
+Expires: 2027-10-31T00:00:00.000Z
+Preferred-Languages: en, hi
+Canonical: https://synqsquad.vercel.app/.well-known/security.txt
+Policy: https://synqsquad.vercel.app/guidelines
+Acknowledgments: https://synqsquad.vercel.app/about

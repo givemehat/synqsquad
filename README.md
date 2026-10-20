@@ -1,4 +1,4 @@
-# SynqSquad — The Teammate Matchmaker on Verified Gmail
+# RIVQ — The Teammate Matchmaker on Verified Gmail
 
 > **The USP:** One person finds the one collaborator they want for hackathons or research papers, and connects with them directly on verified Gmail. That is the entire product. Zero noise, zero closed inboxes, zero fake AI hype.
 
@@ -80,7 +80,7 @@ Set these in your local `.env.local` for development and in your **Vercel Projec
 
 ## 🧪 Automated Verification & Testing
 
-SynqSquad features 133 automated unit, integration, and security tests across multiple test runners:
+RIVQ features 164 automated unit, integration, and security tests across multiple test runners:
 
 ```bash
 # 1. Run core test suite (Auth Server, Privacy, Rate Limiting, UGC Blocks, Talent Profiles & Outreach)

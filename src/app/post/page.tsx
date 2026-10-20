@@ -129,7 +129,7 @@ export default function PostPage() {
             Google Sign-In Required
           </h1>
           <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-            All requisitions on SynqSquad are tied to verified Google accounts so collaborators can reach you on Gmail with zero spam.
+            All requisitions on RIVQ are tied to verified Google accounts so collaborators can reach you on Gmail with zero spam.
           </p>
           <button
             type="button"

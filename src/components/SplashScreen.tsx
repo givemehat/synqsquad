@@ -10,7 +10,7 @@ export function SplashScreen() {
   useEffect(() => {
     // Check if splash was already shown in this browser session
     try {
-      const shown = sessionStorage.getItem("synqsquad_splash_shown");
+      const shown = sessionStorage.getItem("rivq_splash_shown") || sessionStorage.getItem("synqsquad_splash_shown");
       if (shown) {
         return;
       }
@@ -26,7 +26,7 @@ export function SplashScreen() {
 
     if (prefersReducedMotion) {
       try {
-        sessionStorage.setItem("synqsquad_splash_shown", "1");
+        sessionStorage.setItem("rivq_splash_shown", "1");
       } catch {
         /* ignore */
       }
@@ -60,7 +60,7 @@ export function SplashScreen() {
         setTimeout(() => {
           setVisible(false);
           try {
-            sessionStorage.setItem("synqsquad_splash_shown", "1");
+            sessionStorage.setItem("rivq_splash_shown", "1");
           } catch {
             /* ignore */
           }
@@ -98,7 +98,7 @@ export function SplashScreen() {
         <div className="w-16 h-16 rounded-2xl overflow-hidden border border-[var(--border-subtle)] bg-black shadow-md flex items-center justify-center">
           <img
             src="/logo.png"
-            alt="SynqSquad"
+            alt="RIVQ"
             className="w-full h-full object-cover"
           />
         </div>
@@ -106,7 +106,7 @@ export function SplashScreen() {
         {/* Brand Name & USP Subtitle */}
         <div className="space-y-1">
           <h1 className="font-bold text-xl tracking-tight text-[var(--text-primary)]">
-            SynqSquad
+            RIVQ
           </h1>
           <p className="text-xs text-[var(--text-secondary)] font-medium">
             Find your one teammate. Talk on Gmail.

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="synqsquad-data-${Date.now()}.json"`,
+        "Content-Disposition": `attachment; filename="rivq-data-${Date.now()}.json"`,
         "Cache-Control": "no-store, max-age=0",
       },
     });

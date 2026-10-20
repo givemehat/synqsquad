@@ -1,6 +1,6 @@
-# CHANGELOG — SynqSquad
+# CHANGELOG — RIVQ
 
-All notable changes to the SynqSquad project are documented in this file.
+All notable changes to the RIVQ project are documented in this file.
 
 ## [1.5.0] - 2026-10-20 — Two-Way Discovery (Talent Profiles & Outreach) & Pre-Launch Audit
 
