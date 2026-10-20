@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Search } from "lucide-react";
 
 export const metadata = {
-  title: "404 - Page Not Found | SynqSquad",
+  title: "404 - Page Not Found | RIVQ",
   description: "The requested listing or page does not exist or has expired.",
 };
 

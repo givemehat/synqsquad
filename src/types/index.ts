@@ -47,7 +47,7 @@ export interface ContactRecord {
 export interface ReportRecord {
   id: string;
   reporterEmail: string;
-  targetType: "listing" | "user";
+  targetType: "listing" | "user" | "profile";
   targetId: string;
   reason: string;
   details?: string;
@@ -65,4 +65,54 @@ export type ScreenState =
   | "session_expired"
   | "rate_limited"
   | "permission_denied";
+
+export type ExperienceLevel = "student" | "early-career" | "experienced";
+
+export type LookingForType =
+  | "hackathon"
+  | "research"
+  | "startup"
+  | "project"
+  | "mentor"
+  | "open";
+
+export type AvailabilityStatus = "open" | "busy" | "hidden";
+
+export interface TalentProfile {
+  id: string;
+  userId: string;
+  displayName: string;
+  email: string;
+  headline: string;
+  skills: string[];
+  lookingFor: LookingForType[];
+  experienceLevel: ExperienceLevel;
+  bio: string;
+  github?: string;
+  portfolio?: string;
+  linkedin?: string;
+  availability: AvailabilityStatus;
+  visible: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type OutreachStatus = "pending" | "accepted" | "declined";
+
+export interface OutreachRecord {
+  id: string;
+  senderId: string;
+  senderEmail: string;
+  senderName: string;
+  recipientId: string;
+  recipientEmail: string;
+  profileId: string;
+  listingId?: string;
+  listingTitle?: string;
+  listingEvent?: string;
+  message: string;
+  status: OutreachStatus;
+  createdAt: string;
+  updatedAt: string;
+}
 

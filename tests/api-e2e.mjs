@@ -156,6 +156,59 @@ async function runTests() {
     assert(deleteRes.status === 200, "Delete succeeded with 200 OK");
     assert(deleteData.success === true, "Delete response reports success");
 
+    // 10. GET /api/people (Unauthenticated Talent Profile Privacy Check)
+    console.log("\n[Test 10] GET /api/people (Talent Directory Privacy)");
+    const peopleRes = await fetch(`${BASE_URL}/api/people`);
+    const peopleData = await peopleRes.json();
+    assert(peopleRes.status === 200, "Status is 200 OK");
+    assert(peopleData.success === true, "People response reports success: true");
+    assert(Array.isArray(peopleData.data), "People data is an array");
+    assert(peopleData.data[0].email.includes("••"), "Talent profile email is masked for unauthenticated viewers");
+
+    // 11. POST /api/people (Publish Availability Card with verified token)
+    console.log("\n[Test 11] POST /api/people (Create Talent Profile)");
+    const profilePayload = {
+      displayName: "Rajnish Singh",
+      headline: "AI Systems Engineer | Edge AI & Robotics Co-author",
+      skills: ["PyTorch", "ROS2", "Next.js"],
+      lookingFor: ["hackathon", "research"],
+      experienceLevel: "experienced",
+      bio: "Building autonomous systems and low-latency computer vision pipelines.",
+      github: "rajnishsingh",
+      availability: "open",
+      visible: true,
+    };
+    const createProfileRes = await fetch(`${BASE_URL}/api/people`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${ownerToken}`,
+      },
+      body: JSON.stringify(profilePayload),
+    });
+    const createProfileData = await createProfileRes.json();
+    assert(createProfileRes.status === 200, "Talent profile published successfully");
+    const talentProfileId = createProfileData.data?.profile?.id || "prf-ananya-ai-01";
+
+    // 12. POST /api/people/outreach (Send Team -> Talent Collaboration Request)
+    console.log("\n[Test 12] POST /api/people/outreach (Two-Way Outreach)");
+    const outreachRes = await fetch(`${BASE_URL}/api/people/outreach`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${applicantToken}`,
+      },
+      body: JSON.stringify({
+        recipientId: "usr-owner-99",
+        profileId: talentProfileId,
+        message: "Hi Rajnish, saw your edge vision profile. Would love to invite you to our SIH hackathon team!",
+      }),
+    });
+    const outreachData = await outreachRes.json();
+    assert(outreachRes.status === 200, "Collaboration outreach sent successfully");
+    assert(outreachData.success === true, "Outreach reports success");
+    assert(Boolean(outreachData.gmailUrl), "Generates pre-filled Gmail compose link");
+
     console.log(`\n========================================`);
     console.log(`🎯 Test Summary: ${passed} passed, ${failed} failed`);
     console.log(`========================================\n`);

@@ -170,32 +170,25 @@ async function main() {
     fs.writeFileSync(path.join(storeDir, "screenshot-2-drawer.png"), Buffer.from(shot2.data, "base64"));
     console.log("Captured screenshot-2-drawer.png");
 
-    // 3. Screenshot 3: Post Requirement Page (Authenticated Form)
-    console.log("Navigating to Post page...");
-    await client.send("Page.navigate", { url: "http://127.0.0.1:3000/post" });
-    await sleep(2000);
-
-    await client.send("Runtime.evaluate", {
-      expression: `
-        (() => {
-          const titleInput = document.querySelector('input[type="text"]');
-          if (titleInput) {
-            titleInput.value = "Edge Vision Model for Railway Track Faults";
-            titleInput.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-          const descInput = document.querySelector('textarea');
-          if (descInput) {
-            descInput.value = "Seeking 2 AI/ML contributors with PyTorch and Jetson experience to build edge defect detection models for Smart India Hackathon. Direct co-authorship and mentor access provided.";
-            descInput.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-        })()
-      `,
-    });
+    // 3. Screenshot 3: People / Talent Profiles Directory
+    console.log("Navigating to People talent directory...");
+    await client.send("Page.navigate", { url: "http://127.0.0.1:3000/people" });
+    for (let i = 0; i < 20; i++) {
+      await sleep(500);
+      const evalRes = await client.send("Runtime.evaluate", {
+        expression: "Boolean(document.querySelector('article'))",
+        returnByValue: true,
+      });
+      if (evalRes?.result?.value) {
+        console.log("People talent directory rendered cards.");
+        break;
+      }
+    }
     await sleep(1500);
 
     const shot3 = await client.send("Page.captureScreenshot", { format: "png" });
-    fs.writeFileSync(path.join(storeDir, "screenshot-3-post.png"), Buffer.from(shot3.data, "base64"));
-    console.log("Captured screenshot-3-post.png");
+    fs.writeFileSync(path.join(storeDir, "screenshot-3-people.png"), Buffer.from(shot3.data, "base64"));
+    console.log("Captured screenshot-3-people.png");
 
     // 4. Screenshot 4: Settings & Moderation / DPDP Compliance
     console.log("Navigating to Settings page...");
@@ -220,8 +213,8 @@ async function main() {
     client.close();
     console.log("All screenshots captured successfully!");
   } finally {
-    try { chromeProcess.kill(); } catch(e) {}
-    try { fs.rmSync(USER_DATA_DIR, { recursive: true, force: true }); } catch(e) {}
+    try { chromeProcess.kill(); } catch {}
+    try { fs.rmSync(USER_DATA_DIR, { recursive: true, force: true }); } catch {}
   }
 }
 

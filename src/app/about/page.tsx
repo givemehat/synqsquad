@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ArrowLeft, Shield } from "lucide-react";
 
 export const metadata = {
-  title: "About | SynqSquad",
-  description: "The origin and mission behind SynqSquad: direct collaborator matching on verified Gmail.",
+  title: "About | RIVQ",
+  description: "The origin and mission behind RIVQ: direct collaborator matching on verified Gmail.",
 };
 
 export default function AboutPage() {
@@ -19,13 +19,18 @@ export default function AboutPage() {
           <span>Back to Feed</span>
         </Link>
 
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] mb-2">
-            About SynqSquad
-          </h1>
-          <p className="text-xs text-[var(--text-secondary)]">
-            Built by engineers and researchers frustrated with broken team discovery channels.
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-black shadow-sm shrink-0">
+            <img src="/logo.png" alt="RIVQ" className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] mb-1">
+              About RIVQ
+            </h1>
+            <p className="text-xs text-[var(--text-secondary)]">
+              Built by engineers and researchers frustrated with broken team discovery channels.
+            </p>
+          </div>
         </div>
 
         <div className="space-y-5 text-xs text-[var(--text-secondary)] leading-relaxed">
@@ -38,7 +43,7 @@ export default function AboutPage() {
           </p>
 
           <p>
-            <strong>SynqSquad takes the opposite approach:</strong> We act as an ultra-clean, verified introduction directory. You find the exact profile you need in under 30 seconds, click &quot;Connect on Gmail&quot;, and conversation flows into your native, searchable email inbox.
+            <strong>RIVQ takes the opposite approach:</strong> We act as an ultra-clean, verified introduction directory. You find the exact profile you need in under 30 seconds, click &quot;Connect on Gmail&quot;, and conversation flows into your native, searchable email inbox.
           </p>
 
           <div className="p-5 rounded-2xl surface-card space-y-2">

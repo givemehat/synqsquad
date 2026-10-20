@@ -90,8 +90,8 @@ def create_bundle(output_aab, version_code=1, version_name="1.0.0"):
     
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
-        print(f"Signing failed: {res.stderr}")
-        raise RuntimeError(f"jarsigner error: {res.stderr}")
+        print(f"Signing failed: {res.stderr} | stdout: {res.stdout}")
+        raise RuntimeError(f"jarsigner error: {res.stderr} | stdout: {res.stdout}")
     else:
         print(f"✓ Signed bundle created: {output_aab}")
         
@@ -173,12 +173,12 @@ def verify_jar(file_path):
 def main():
     ensure_dir("android")
     
-    print("Building v1.0.0 Release AAB (versionCode 1)...")
-    create_bundle("android/app-release.aab", version_code=1, version_name="1.0.0")
+    print("Building v1.1.0 Release AAB (versionCode 2)...")
+    create_bundle("android/app-release.aab", version_code=2, version_name="1.1.0")
     verify_jar("android/app-release.aab")
     
     print("\nBuilding Debug APK...")
-    create_apk("android/app-debug.apk", version_code=1, version_name="1.0.0")
+    create_apk("android/app-debug.apk", version_code=2, version_name="1.1.0")
     verify_jar("android/app-debug.apk")
     
     print("\nBuilding v1.0.1 Update AAB (versionCode 2) for Update Verification...")

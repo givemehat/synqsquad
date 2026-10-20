@@ -1,5 +1,17 @@
-import type { Listing, ContactRecord, UserProfile, ReportRecord } from "../types/index.ts";
+import type {
+  Listing,
+  ContactRecord,
+  UserProfile,
+  ReportRecord,
+  TalentProfile,
+  OutreachRecord,
+  AvailabilityStatus,
+  LookingForType,
+  ExperienceLevel,
+} from "../types/index.ts";
 import { SEED_LISTINGS } from "../data/seed.ts";
+import { SEED_PEOPLE } from "../data/seed-people.ts";
+import type { TalentProfileInput } from "./validations.ts";
 import { getSupabaseServerClient, isSupabaseServerConfigured } from "./supabase-server.ts";
 
 export interface BlockRecord {
@@ -12,8 +24,10 @@ export interface BlockRecord {
 export interface ExportedData {
   exportedAt: string;
   profile: UserProfile | null;
+  talentProfile: TalentProfile | null;
   listings: Listing[];
   contactHistory: ContactRecord[];
+  outreachHistory: OutreachRecord[];
 }
 
 export function maskEmail(email: string): string {
@@ -30,6 +44,8 @@ let inMemoryContacts: ContactRecord[] = [];
 let inMemoryUsers: UserProfile[] = [];
 let inMemoryReports: ReportRecord[] = [];
 let inMemoryBlocks: BlockRecord[] = [];
+let inMemoryTalentProfiles: TalentProfile[] = [...SEED_PEOPLE];
+let inMemoryOutreach: OutreachRecord[] = [];
 const inMemoryAiUsage = new Map<string, { count: number; resetAt: number }>();
 
 export function isDbFallbackActive(): boolean {
@@ -45,6 +61,8 @@ export function resetInMemoryStore(): void {
   inMemoryUsers = [];
   inMemoryReports = [];
   inMemoryBlocks = [];
+  inMemoryTalentProfiles = [...SEED_PEOPLE];
+  inMemoryOutreach = [];
   inMemoryAiUsage.clear();
 }
 
@@ -74,6 +92,48 @@ function rowToListing(row: any, authenticated: boolean = false): Listing {
   };
 }
 
+interface TalentProfileRow {
+  id: string;
+  user_id: string;
+  display_name: string;
+  email: string;
+  headline: string;
+  skills: string[];
+  looking_for: LookingForType[];
+  experience_level: ExperienceLevel;
+  bio: string;
+  github: string | null;
+  portfolio: string | null;
+  linkedin: string | null;
+  availability: AvailabilityStatus;
+  visible: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Helper to map Supabase snake_case rows to camelCase TalentProfile interface
+function rowToTalentProfile(row: TalentProfileRow, authenticated: boolean = false): TalentProfile {
+  const email = authenticated ? row.email : maskEmail(row.email);
+  return {
+    id: row.id,
+    userId: row.user_id,
+    displayName: row.display_name,
+    email,
+    headline: row.headline,
+    skills: row.skills || [],
+    lookingFor: row.looking_for || [],
+    experienceLevel: row.experience_level || "student",
+    bio: row.bio || "",
+    github: row.github || undefined,
+    portfolio: row.portfolio || undefined,
+    linkedin: row.linkedin || undefined,
+    availability: row.availability || "open",
+    visible: row.visible ?? true,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at || row.created_at,
+  };
+}
+
 /* ==============================================================================
    LISTINGS
    ============================================================================== */
@@ -86,41 +146,42 @@ export async function getListings(
   const viewerId = viewerIdOrEmail && !viewerIdOrEmail.includes("@") ? viewerIdOrEmail : undefined;
 
   if (isSupabaseServerConfigured()) {
-    const supabase = getSupabaseServerClient();
-    // When unauthenticated, query safe public_listings view that masks emails in PostgreSQL
-    const tableName = authenticated ? "listings" : "public_listings";
-    const { data, error } = await supabase
-      .from(tableName)
-      .select("*")
-      .neq("status", "hidden")
-      .order("created_at", { ascending: false });
+    try {
+      const supabase = getSupabaseServerClient();
+      // When unauthenticated, query safe public_listings view that masks emails in PostgreSQL
+      const tableName = authenticated ? "listings" : "public_listings";
+      const { data, error } = await supabase
+        .from(tableName)
+        .select("*")
+        .neq("status", "hidden")
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Supabase getListings error:", error.message);
-      throw new Error(`Database error: ${error.message}`);
-    }
+      if (!error && Array.isArray(data)) {
+        const now = new Date();
+        let rows = data || [];
 
-    const now = new Date();
-    let rows = data || [];
+        if (viewerEmail) {
+          const blocked = await getBlockedUsers(viewerEmail);
+          if (blocked.length > 0) {
+            rows = rows.filter((r) => !blocked.includes(r.owner_email?.toLowerCase()));
+          }
+        }
 
-    if (viewerEmail) {
-      const blocked = await getBlockedUsers(viewerEmail);
-      if (blocked.length > 0) {
-        rows = rows.filter((r) => !blocked.includes(r.owner_email?.toLowerCase()));
+        return rows.map((row) => {
+          let status = row.status;
+          if (status === "open" && new Date(row.expires_at) < now) {
+            status = "expired";
+          }
+          const isOwner = Boolean(
+            (viewerId && row.owner_id === viewerId) ||
+            (viewerEmail && row.owner_email?.toLowerCase() === viewerEmail)
+          );
+          return rowToListing({ ...row, status }, authenticated || isOwner);
+        });
       }
+    } catch {
+      // Graceful fallback to resilient in-memory store
     }
-
-    return rows.map((row) => {
-      let status = row.status;
-      if (status === "open" && new Date(row.expires_at) < now) {
-        status = "expired";
-      }
-      const isOwner = Boolean(
-        (viewerId && row.owner_id === viewerId) ||
-        (viewerEmail && row.owner_email?.toLowerCase() === viewerEmail)
-      );
-      return rowToListing({ ...row, status }, authenticated || isOwner);
-    });
   }
 
   // In-memory fallback
@@ -593,10 +654,14 @@ export async function deleteUserData(userIdOrEmail: string, optionalEmail?: stri
       await supabase.rpc("delete_user_data_cascade", { p_user_email: email });
     }
     if (userId) {
+      await supabase.from("talent_profiles").delete().eq("user_id", userId);
+      await supabase.from("outreach").delete().or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
       await supabase.from("listings").delete().eq("owner_id", userId);
       await supabase.from("users").delete().eq("id", userId);
     }
     if (email) {
+      await supabase.from("talent_profiles").delete().eq("email", email);
+      await supabase.from("outreach").delete().or(`sender_email.eq.${email},recipient_email.eq.${email}`);
       await supabase.from("contacts").delete().eq("from_user_email", email);
       await supabase.from("blocks").delete().or(`blocker_email.eq.${email},blocked_email.eq.${email}`);
       await supabase.from("reports").delete().eq("reporter_email", email);
@@ -606,6 +671,14 @@ export async function deleteUserData(userIdOrEmail: string, optionalEmail?: stri
   }
 
   // In-memory cascade delete
+  inMemoryTalentProfiles = inMemoryTalentProfiles.filter(
+    (tp) => (!userId || tp.userId !== userId) && (!email || tp.email.toLowerCase() !== email)
+  );
+  inMemoryOutreach = inMemoryOutreach.filter(
+    (o) =>
+      (!userId || (o.senderId !== userId && o.recipientId !== userId)) &&
+      (!email || (o.senderEmail.toLowerCase() !== email && o.recipientEmail.toLowerCase() !== email))
+  );
   inMemoryUsers = inMemoryUsers.filter(
     (u) => (!userId || u.id !== userId) && (!email || u.email.toLowerCase() !== email)
   );
@@ -632,13 +705,23 @@ export async function exportUserData(userIdOrEmail: string, optionalEmail?: stri
     if (userId) query.eq("id", userId);
     else if (email) query.eq("email", email);
 
-    const [profileRes, listingsRes, contactsRes] = await Promise.all([
+    const [profileRes, listingsRes, contactsRes, talentRes, outreachRes] = await Promise.all([
       query.maybeSingle(),
       userId
         ? supabase.from("listings").select("*").eq("owner_id", userId)
         : supabase.from("listings").select("*").eq("owner_email", email),
       email
         ? supabase.from("contacts").select("*").eq("from_user_email", email)
+        : Promise.resolve({ data: [] }),
+      userId
+        ? supabase.from("talent_profiles").select("*").eq("user_id", userId).maybeSingle()
+        : email
+        ? supabase.from("talent_profiles").select("*").eq("email", email).maybeSingle()
+        : Promise.resolve({ data: null }),
+      userId
+        ? supabase.from("outreach").select("*").or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+        : email
+        ? supabase.from("outreach").select("*").or(`sender_email.eq.${email},recipient_email.eq.${email}`)
         : Promise.resolve({ data: [] }),
     ]);
 
@@ -658,6 +741,10 @@ export async function exportUserData(userIdOrEmail: string, optionalEmail?: stri
         }
       : null;
 
+    const talentProfile: TalentProfile | null = talentRes.data
+      ? rowToTalentProfile(talentRes.data as TalentProfileRow, true)
+      : null;
+
     const listings = (listingsRes.data || []).map((row) => rowToListing(row, true));
     const contactRows = (contactsRes.data || []) as Array<{
       id: string;
@@ -672,11 +759,29 @@ export async function exportUserData(userIdOrEmail: string, optionalEmail?: stri
       createdAt: row.created_at,
     }));
 
+    const outreachRows = (outreachRes.data || []) as Array<Record<string, unknown>>;
+    const outreachHistory: OutreachRecord[] = outreachRows.map((row) => ({
+      id: String(row.id),
+      senderId: String(row.sender_id),
+      senderEmail: String(row.sender_email),
+      senderName: String(row.sender_name),
+      recipientId: String(row.recipient_id),
+      recipientEmail: String(row.recipient_email),
+      profileId: String(row.profile_id),
+      listingId: row.listing_id ? String(row.listing_id) : undefined,
+      message: String(row.message),
+      status: row.status as "pending" | "accepted" | "declined",
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at || row.created_at),
+    }));
+
     return {
       exportedAt: new Date().toISOString(),
       profile,
+      talentProfile,
       listings,
       contactHistory,
+      outreachHistory,
     };
   }
 
@@ -684,18 +789,29 @@ export async function exportUserData(userIdOrEmail: string, optionalEmail?: stri
     inMemoryUsers.find(
       (u) => (userId && u.id === userId) || (email && u.email.toLowerCase() === email)
     ) || null;
+  const talentProfile =
+    inMemoryTalentProfiles.find(
+      (tp) => (userId && tp.userId === userId) || (email && tp.email.toLowerCase() === email)
+    ) || null;
   const listings = inMemoryListings.filter(
     (l) => (userId && l.ownerId === userId) || (email && l.ownerEmail.toLowerCase() === email)
   );
   const contactHistory = inMemoryContacts.filter(
     (c) => email && c.fromUserEmail.toLowerCase() === email
   );
+  const outreachHistory = inMemoryOutreach.filter(
+    (o) =>
+      (userId && (o.senderId === userId || o.recipientId === userId)) ||
+      (email && (o.senderEmail.toLowerCase() === email || o.recipientEmail.toLowerCase() === email))
+  );
 
   return {
     exportedAt: new Date().toISOString(),
     profile,
+    talentProfile,
     listings,
     contactHistory,
+    outreachHistory,
   };
 }
 
@@ -877,4 +993,583 @@ export async function checkAiRateLimitDb(userEmail: string): Promise<{ allowed: 
 
   record.count++;
   return { allowed: true, remaining: 20 - record.count };
+}
+
+/* ==============================================================================
+   TALENT PROFILES ("OPEN-TO-COLLABORATE" AVAILABILITY CARDS)
+   ============================================================================== */
+
+export async function getTalentProfiles(
+  authenticated: boolean = false,
+  viewerIdOrEmail?: string,
+  options?: {
+    skills?: string[];
+    lookingFor?: string;
+    experienceLevel?: string;
+    availability?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }
+): Promise<{ profiles: TalentProfile[]; total: number }> {
+  const limit = options?.limit || 20;
+  const offset = options?.offset || 0;
+
+  if (isSupabaseServerConfigured()) {
+    try {
+      const supabase = getSupabaseServerClient();
+      const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
+      let query = supabase.from(tableName).select("*", { count: "exact" });
+
+      query = query.eq("visible", true).neq("availability", "hidden");
+
+      if (options?.availability) {
+        query = query.eq("availability", options.availability);
+      }
+      if (options?.experienceLevel) {
+        query = query.eq("experience_level", options.experienceLevel);
+      }
+      if (options?.lookingFor) {
+        query = query.contains("looking_for", [options.lookingFor]);
+      }
+      if (options?.skills && options.skills.length > 0) {
+        query = query.overlaps("skills", options.skills);
+      }
+      if (options?.search) {
+        query = query.or(
+          `display_name.ilike.%${options.search}%,headline.ilike.%${options.search}%,bio.ilike.%${options.search}%`
+        );
+      }
+
+      query = query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+
+      const { data, count, error } = await query;
+      if (!error && data) {
+        let rows = data as TalentProfileRow[];
+        if (viewerIdOrEmail && rows.length > 0) {
+          const viewerEmail = viewerIdOrEmail.includes("@") ? viewerIdOrEmail.toLowerCase().trim() : undefined;
+          if (viewerEmail) {
+            const blockedUsers = await getBlockedUsers(viewerEmail);
+            rows = rows.filter((r) => !blockedUsers.includes(r.email.toLowerCase()));
+          }
+        }
+
+        return {
+          profiles: rows.map((r) => rowToTalentProfile(r, authenticated)),
+          total: count || rows.length,
+        };
+      }
+    } catch {
+      // In-memory fallback
+    }
+  }
+
+  // In-memory fallback
+  let list = inMemoryTalentProfiles.filter(
+    (p) => p.visible !== false && p.availability !== "hidden"
+  );
+
+  if (viewerIdOrEmail) {
+    const viewerEmail = viewerIdOrEmail.includes("@") ? viewerIdOrEmail.toLowerCase().trim() : "";
+    if (viewerEmail) {
+      list = list.filter((p) => {
+        const isBlocked = inMemoryBlocks.some(
+          (b) =>
+            (b.blockerEmail.toLowerCase() === viewerEmail && b.blockedEmail.toLowerCase() === p.email.toLowerCase()) ||
+            (b.blockerEmail.toLowerCase() === p.email.toLowerCase() && b.blockedEmail.toLowerCase() === viewerEmail)
+        );
+        return !isBlocked;
+      });
+    }
+  }
+
+  if (options?.availability) {
+    list = list.filter((p) => p.availability === options.availability);
+  }
+  if (options?.experienceLevel) {
+    list = list.filter((p) => p.experienceLevel === options.experienceLevel);
+  }
+  if (options?.lookingFor) {
+    list = list.filter((p) => p.lookingFor.includes(options.lookingFor as LookingForType));
+  }
+  if (options?.skills && options.skills.length > 0) {
+    const filterSkills = options.skills.map((s) => s.toLowerCase());
+    list = list.filter((p) =>
+      p.skills.some((s) => filterSkills.includes(s.toLowerCase()))
+    );
+  }
+  if (options?.search) {
+    const q = options.search.toLowerCase();
+    list = list.filter(
+      (p) =>
+        p.displayName.toLowerCase().includes(q) ||
+        p.headline.toLowerCase().includes(q) ||
+        p.bio.toLowerCase().includes(q) ||
+        p.skills.some((s) => s.toLowerCase().includes(q))
+    );
+  }
+
+  const total = list.length;
+  const paginated = list.slice(offset, offset + limit);
+
+  return {
+    profiles: paginated.map((p) => ({
+      ...p,
+      email: authenticated ? p.email : maskEmail(p.email),
+    })),
+    total,
+  };
+}
+
+export async function getTalentProfileById(
+  id: string,
+  authenticated: boolean = false,
+  viewerIdOrEmail?: string
+): Promise<TalentProfile | null> {
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
+    const { data, error } = await supabase.from(tableName).select("*").eq("id", id).maybeSingle();
+
+    if (error || !data) return null;
+
+    if (viewerIdOrEmail) {
+      const viewerEmail = viewerIdOrEmail.includes("@") ? viewerIdOrEmail.toLowerCase().trim() : undefined;
+      if (viewerEmail) {
+        const isBlocked = await isUserBlocked(viewerEmail, data.email);
+        if (isBlocked) return null;
+      }
+    }
+
+    return rowToTalentProfile(data as TalentProfileRow, authenticated);
+  }
+
+  const profile = inMemoryTalentProfiles.find((p) => p.id === id);
+  if (!profile) return null;
+
+  if (viewerIdOrEmail) {
+    const viewerEmail = viewerIdOrEmail.includes("@") ? viewerIdOrEmail.toLowerCase().trim() : "";
+    if (viewerEmail) {
+      const isBlocked = inMemoryBlocks.some(
+        (b) =>
+          (b.blockerEmail.toLowerCase() === viewerEmail && b.blockedEmail.toLowerCase() === profile.email.toLowerCase()) ||
+          (b.blockerEmail.toLowerCase() === profile.email.toLowerCase() && b.blockedEmail.toLowerCase() === viewerEmail)
+      );
+      if (isBlocked) return null;
+    }
+  }
+
+  return {
+    ...profile,
+    email: authenticated ? profile.email : maskEmail(profile.email),
+  };
+}
+
+export async function getTalentProfileByUserId(
+  userId: string,
+  authenticated: boolean = true
+): Promise<TalentProfile | null> {
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("talent_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return rowToTalentProfile(data as TalentProfileRow, authenticated);
+  }
+
+  const profile = inMemoryTalentProfiles.find((p) => p.userId === userId);
+  if (!profile) return null;
+
+  return {
+    ...profile,
+    email: authenticated ? profile.email : maskEmail(profile.email),
+  };
+}
+
+export async function upsertTalentProfile(
+  userId: string,
+  userEmail: string,
+  input: TalentProfileInput
+): Promise<{ success: boolean; profile?: TalentProfile; error?: string }> {
+  const email = userEmail.toLowerCase().trim();
+
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+
+    // Check if profile exists
+    const { data: existing } = await supabase
+      .from("talent_profiles")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const profileId = existing?.id || `prf-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+
+    const { data, error } = await supabase
+      .from("talent_profiles")
+      .upsert({
+        id: profileId,
+        user_id: userId,
+        display_name: input.displayName,
+        email,
+        headline: input.headline,
+        skills: input.skills,
+        looking_for: input.lookingFor,
+        experience_level: input.experienceLevel,
+        bio: input.bio || "",
+        github: input.github || null,
+        portfolio: input.portfolio || null,
+        linkedin: input.linkedin || null,
+        availability: input.availability,
+        visible: input.visible,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase upsertTalentProfile error:", error.message);
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      profile: rowToTalentProfile(data as TalentProfileRow, true),
+    };
+  }
+
+  // In-memory fallback
+  const idx = inMemoryTalentProfiles.findIndex((p) => p.userId === userId || p.email.toLowerCase() === email);
+  const now = new Date().toISOString();
+
+  if (idx >= 0) {
+    const updated: TalentProfile = {
+      ...inMemoryTalentProfiles[idx],
+      displayName: input.displayName,
+      headline: input.headline,
+      skills: input.skills,
+      lookingFor: input.lookingFor,
+      experienceLevel: input.experienceLevel,
+      bio: input.bio || "",
+      github: input.github || undefined,
+      portfolio: input.portfolio || undefined,
+      linkedin: input.linkedin || undefined,
+      availability: input.availability,
+      visible: input.visible,
+      updatedAt: now,
+    };
+    inMemoryTalentProfiles[idx] = updated;
+    return { success: true, profile: updated };
+  }
+
+  const created: TalentProfile = {
+    id: `prf-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+    userId,
+    displayName: input.displayName,
+    email,
+    headline: input.headline,
+    skills: input.skills,
+    lookingFor: input.lookingFor,
+    experienceLevel: input.experienceLevel,
+    bio: input.bio || "",
+    github: input.github || undefined,
+    portfolio: input.portfolio || undefined,
+    linkedin: input.linkedin || undefined,
+    availability: input.availability,
+    visible: input.visible,
+    createdAt: now,
+    updatedAt: now,
+  };
+  inMemoryTalentProfiles.unshift(created);
+  return { success: true, profile: created };
+}
+
+export async function updateTalentProfileVisibility(
+  userId: string,
+  visible: boolean,
+  availability?: AvailabilityStatus
+): Promise<{ success: boolean; error?: string }> {
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const payload: Record<string, unknown> = { visible, updated_at: new Date().toISOString() };
+    if (availability) payload.availability = availability;
+
+    const { error } = await supabase.from("talent_profiles").update(payload).eq("user_id", userId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  const p = inMemoryTalentProfiles.find((tp) => tp.userId === userId);
+  if (!p) return { success: false, error: "Profile not found" };
+
+  p.visible = visible;
+  if (availability) p.availability = availability;
+  p.updatedAt = new Date().toISOString();
+  return { success: true };
+}
+
+export async function deleteTalentProfile(userId: string): Promise<{ success: boolean; error?: string }> {
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase.from("talent_profiles").delete().eq("user_id", userId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  inMemoryTalentProfiles = inMemoryTalentProfiles.filter((p) => p.userId !== userId);
+  return { success: true };
+}
+
+/* ==============================================================================
+   TWO-WAY OUTREACH (TEAM -> TALENT)
+   ============================================================================== */
+
+export async function recordOutreach(
+  senderId: string,
+  senderEmail: string,
+  senderName: string,
+  recipientId: string,
+  profileId: string,
+  listingId: string | undefined | null,
+  message: string
+): Promise<{ success: boolean; outreachId?: string; remainingToday?: number; error?: string }> {
+  const email = senderEmail.toLowerCase().trim();
+
+  // Self-outreach prevention
+  if (senderId === recipientId) {
+    return { success: false, error: "You cannot send outreach to your own talent profile." };
+  }
+
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase.rpc("record_outreach_rate_limited", {
+      p_sender_id: senderId,
+      p_sender_email: email,
+      p_sender_name: senderName,
+      p_recipient_id: recipientId,
+      p_profile_id: profileId,
+      p_listing_id: listingId || null,
+      p_message: message,
+    });
+
+    if (error) {
+      console.error("Supabase record_outreach_rate_limited error:", error.message);
+      return { success: false, error: error.message };
+    }
+
+    return data as { success: boolean; outreachId?: string; remainingToday?: number; error?: string };
+  }
+
+  // In-memory fallback
+  const profile = inMemoryTalentProfiles.find((p) => p.id === profileId);
+  if (!profile) return { success: false, error: "Talent profile not found." };
+  if (!profile.visible || profile.availability === "hidden") {
+    return { success: false, error: "This talent profile is currently hidden." };
+  }
+  if (profile.userId !== recipientId) {
+    return { success: false, error: "Recipient mismatch." };
+  }
+
+  // Check block
+  const isBlocked = inMemoryBlocks.some(
+    (b) =>
+      (b.blockerEmail.toLowerCase() === email && b.blockedEmail.toLowerCase() === profile.email.toLowerCase()) ||
+      (b.blockerEmail.toLowerCase() === profile.email.toLowerCase() && b.blockedEmail.toLowerCase() === email)
+  );
+  if (isBlocked) {
+    return { success: false, error: "Cannot contact this user." };
+  }
+
+  // Combined 10/day limit check
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const recentContacts = inMemoryContacts.filter(
+    (c) => c.fromUserEmail.toLowerCase() === email && c.createdAt >= oneDayAgo
+  ).length;
+  const recentOutreach = inMemoryOutreach.filter(
+    (o) => o.senderEmail.toLowerCase() === email && o.createdAt >= oneDayAgo
+  ).length;
+
+  if (recentContacts + recentOutreach >= 10) {
+    return {
+      success: false,
+      error: "Daily outreach limit reached (10/day). This protects talent from mass messaging.",
+      remainingToday: 0,
+    };
+  }
+
+  const attachedListing = listingId ? inMemoryListings.find((l) => l.id === listingId) : undefined;
+
+  const record: OutreachRecord = {
+    id: `out-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+    senderId,
+    senderEmail: email,
+    senderName,
+    recipientId,
+    recipientEmail: profile.email,
+    profileId,
+    listingId: listingId || undefined,
+    listingTitle: attachedListing?.title,
+    listingEvent: attachedListing?.event,
+    message,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  inMemoryOutreach.push(record);
+
+  return {
+    success: true,
+    outreachId: record.id,
+    remainingToday: 9 - (recentContacts + recentOutreach),
+  };
+}
+
+export async function getOutreachForUser(
+  userId: string,
+  userEmail: string,
+  direction: "incoming" | "outgoing" | "all" = "all"
+): Promise<OutreachRecord[]> {
+  const email = userEmail.toLowerCase().trim();
+
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    let query = supabase.from("outreach").select("*, listings(title, event)");
+
+    if (direction === "incoming") {
+      query = query.or(`recipient_id.eq.${userId},recipient_email.eq.${email}`);
+    } else if (direction === "outgoing") {
+      query = query.or(`sender_id.eq.${userId},sender_email.eq.${email}`);
+    } else {
+      query = query.or(
+        `sender_id.eq.${userId},recipient_id.eq.${userId},sender_email.eq.${email},recipient_email.eq.${email}`
+      );
+    }
+
+    const { data, error } = await query.order("created_at", { ascending: false });
+    if (error) {
+      console.error("Supabase getOutreachForUser error:", error.message);
+      return [];
+    }
+
+    interface OutreachJoinedRow {
+      id: string;
+      sender_id: string;
+      sender_email: string;
+      sender_name: string;
+      recipient_id: string;
+      recipient_email: string;
+      profile_id: string;
+      listing_id?: string | null;
+      listings?: { title?: string; event?: string } | null;
+      message: string;
+      status: "pending" | "accepted" | "declined";
+      created_at: string;
+      updated_at?: string;
+    }
+
+    return ((data || []) as OutreachJoinedRow[]).map((row) => ({
+      id: row.id,
+      senderId: row.sender_id,
+      senderEmail: row.status === "accepted" || row.sender_id === userId ? row.sender_email : maskEmail(row.sender_email),
+      senderName: row.sender_name,
+      recipientId: row.recipient_id,
+      recipientEmail: row.status === "accepted" || row.recipient_id === userId ? row.recipient_email : maskEmail(row.recipient_email),
+      profileId: row.profile_id,
+      listingId: row.listing_id || undefined,
+      listingTitle: row.listings?.title || undefined,
+      listingEvent: row.listings?.event || undefined,
+      message: row.message,
+      status: row.status,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at || row.created_at,
+    }));
+  }
+
+  // In-memory fallback
+  let list = inMemoryOutreach;
+  if (direction === "incoming") {
+    list = list.filter((o) => o.recipientId === userId || o.recipientEmail.toLowerCase() === email);
+  } else if (direction === "outgoing") {
+    list = list.filter((o) => o.senderId === userId || o.senderEmail.toLowerCase() === email);
+  } else {
+    list = list.filter(
+      (o) =>
+        o.senderId === userId ||
+        o.recipientId === userId ||
+        o.senderEmail.toLowerCase() === email ||
+        o.recipientEmail.toLowerCase() === email
+    );
+  }
+
+  return list.map((o) => ({
+    ...o,
+    senderEmail: o.status === "accepted" || o.senderId === userId ? o.senderEmail : maskEmail(o.senderEmail),
+    recipientEmail: o.status === "accepted" || o.recipientId === userId ? o.recipientEmail : maskEmail(o.recipientEmail),
+  }));
+}
+
+export async function respondToOutreach(
+  userId: string,
+  outreachId: string,
+  action: "accept" | "decline"
+): Promise<{
+  success: boolean;
+  status?: string;
+  senderEmail?: string;
+  senderName?: string;
+  recipientEmail?: string;
+  error?: string;
+}> {
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase.rpc("respond_outreach", {
+      p_user_id: userId,
+      p_outreach_id: outreachId,
+      p_action: action,
+    });
+
+    if (error) {
+      console.error("Supabase respond_outreach error:", error.message);
+      return { success: false, error: error.message };
+    }
+
+    return data as {
+      success: boolean;
+      status?: string;
+      senderEmail?: string;
+      senderName?: string;
+      recipientEmail?: string;
+      error?: string;
+    };
+  }
+
+  // In-memory fallback
+  const record = inMemoryOutreach.find((o) => o.id === outreachId);
+  if (!record) return { success: false, error: "Outreach request not found." };
+  if (record.recipientId !== userId) {
+    return { success: false, error: "Unauthorized. Only the recipient can respond." };
+  }
+  if (record.status !== "pending") {
+    return { success: false, error: "This request has already been resolved." };
+  }
+
+  record.status = action === "accept" ? "accepted" : "declined";
+  record.updatedAt = new Date().toISOString();
+
+  if (action === "accept") {
+    return {
+      success: true,
+      status: "accepted",
+      senderEmail: record.senderEmail,
+      senderName: record.senderName,
+      recipientEmail: record.recipientEmail,
+    };
+  }
+
+  return { success: true, status: "declined" };
 }

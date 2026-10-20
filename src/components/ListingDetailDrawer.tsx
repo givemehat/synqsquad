@@ -43,8 +43,8 @@ const generateTemplates = (listing: Listing, user: UserProfile | null) => {
     hackathon: {
       label: "Hackathon Teammate",
       badge: "Recommended",
-      subject: `SynqSquad: Teammate inquiry for ${event} — ${title}`,
-      body: `Hi ${recipient},\n\nI saw your post for ${event} on SynqSquad. I work as a ${senderRole} focusing on ${senderSkills}, and I would like to join your squad for "${title}".\n\nI have open bandwidth to build and I am happy to share my GitHub and past projects. Are you still looking for teammates?\n\nBest regards,\n${senderName}`,
+      subject: `RIVQ: Teammate inquiry for ${event} — ${title}`,
+      body: `Hi ${recipient},\n\nI saw your post for ${event} on RIVQ. I work as a ${senderRole} focusing on ${senderSkills}, and I would like to join your squad for "${title}".\n\nI have open bandwidth to build and I am happy to share my GitHub and past projects. Are you still looking for teammates?\n\nBest regards,\n${senderName}`,
     },
     research: {
       label: "Research Collaboration",
@@ -61,8 +61,8 @@ const generateTemplates = (listing: Listing, user: UserProfile | null) => {
     casual: {
       label: "Short & Casual",
       badge: null,
-      subject: `SynqSquad: ${event} squad`,
-      body: `Hi ${recipient},\n\nSaw your ${event} post on SynqSquad. I do ${senderSkills} and would love to team up for this. Let's talk directly on Gmail.\n\nCheers,\n${senderName}`,
+      subject: `RIVQ: ${event} squad`,
+      body: `Hi ${recipient},\n\nSaw your ${event} post on RIVQ. I do ${senderSkills} and would love to team up for this. Let's talk directly on Gmail.\n\nCheers,\n${senderName}`,
     },
   };
 };

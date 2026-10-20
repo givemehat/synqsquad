@@ -133,7 +133,7 @@ export function GoogleAuthModal() {
                 Sign in with Google to contact people. You will talk on Gmail.
               </h3>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                SynqSquad uses verified Google accounts so collaborators can reach you directly on Gmail with zero spam. Your raw email address is never exposed publicly.
+                RIVQ uses verified Google accounts so collaborators can reach you directly on Gmail with zero spam. Your raw email address is never exposed publicly.
               </p>
             </div>
 

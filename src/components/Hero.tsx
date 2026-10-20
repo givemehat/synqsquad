@@ -48,8 +48,22 @@ export function Hero({
         </h1>
 
         <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xl mx-auto leading-normal">
-          Connect directly on Gmail with students and researchers looking for your exact skills.
+          Two-way discovery for hackathons and research papers: find open team requisitions or publish your availability to let project leads invite you directly on verified Gmail.
         </p>
+
+        {/* Two-Way Discovery Mode Switch / Banner */}
+        <div className="flex items-center justify-center gap-2 pt-1 text-xs">
+          <span className="px-3 py-1 rounded-full bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-secondary)]">
+            <strong className="text-[var(--text-primary)]">Mode 1:</strong> Find Open Teams
+          </span>
+          <span className="text-[var(--text-tertiary)]">•</span>
+          <a
+            href="/people"
+            className="px-3 py-1 rounded-full bg-[var(--accent-subtle)] border border-[var(--accent-primary)]/20 text-[var(--accent-primary)] hover:bg-[var(--accent-subtle)]/80 transition-colors font-medium flex items-center gap-1"
+          >
+            <strong className="text-[var(--accent-primary)]">Mode 2:</strong> Be Discoverable on /people →
+          </a>
+        </div>
 
         {/* Global Search Bar */}
         <div className="max-w-xl mx-auto relative pt-1">

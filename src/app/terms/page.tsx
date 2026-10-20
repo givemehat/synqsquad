@@ -3,8 +3,8 @@ import Link from "next/link";
 import { Scale, ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Terms of Service | SynqSquad",
-  description: "Terms and conditions governing the use of the SynqSquad matchmaking platform.",
+  title: "Terms of Service | RIVQ",
+  description: "Terms and conditions governing the use of the RIVQ matchmaking platform.",
 };
 
 export default function TermsOfServicePage() {
@@ -35,14 +35,14 @@ export default function TermsOfServicePage() {
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">1. Acceptance & Eligibility</h2>
             <p>
-              By accessing or using SynqSquad, you agree to be bound by these Terms. You must be at least 18 years of age, or have the valid consent of a legal parent/guardian if a collegiate student between 16 and 18 years old, to participate in hackathon and research matchmaking.
+              By accessing or using RIVQ, you agree to be bound by these Terms. You must be at least 18 years of age, or have the valid consent of a legal parent/guardian if a collegiate student between 16 and 18 years old, to participate in hackathon and research matchmaking.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">2. Introduction Platform Only</h2>
             <p>
-              SynqSquad provides a technical directory allowing users to discover collaborators and initiate email conversations. SynqSquad is <strong>not</strong> an employer, agent, tournament organizer, or academic co-author. We do not independently verify past competition wins, academic credentials, or individual claims.
+              RIVQ provides a technical directory allowing users to discover collaborators and initiate email conversations. RIVQ is <strong>not</strong> an employer, agent, tournament organizer, or academic co-author. We do not independently verify past competition wins, academic credentials, or individual claims.
             </p>
           </section>
 
@@ -58,21 +58,28 @@ export default function TermsOfServicePage() {
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">4. Content Ownership & Deletion</h2>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">4. Talent Profiles & Two-Way Collaboration Outreach</h2>
             <p>
-              You retain full ownership of all project abstracts and descriptions you publish on SynqSquad. By posting, you grant SynqSquad a non-exclusive license to display the content on our public discovery board. You may edit, mark filled, or permanently delete your listings at any time.
+              Users publishing availability in the <strong>Talent Directory (/people)</strong> agree to display their skills, headline, and collaboration preferences. Inquiries and two-way outreaches are subject to the shared 10 connections/day quota and Google Play UGC safety guidelines, including immediate blocking and reporting mechanisms.
             </p>
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">5. Limitation of Liability</h2>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">5. Content Ownership & Deletion</h2>
             <p>
-              To the fullest extent permitted by Indian law, SynqSquad and its developers shall not be liable for any direct, indirect, incidental, or consequential damages arising from agreements, code contributions, intellectual property disputes, or interactions between users introduced through the platform.
+              You retain full ownership of all project abstracts and descriptions you publish on RIVQ. By posting, you grant RIVQ a non-exclusive license to display the content on our public discovery board. You may edit, mark filled, or permanently delete your listings at any time.
             </p>
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">6. Governing Law & Jurisdiction</h2>
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">6. Limitation of Liability</h2>
+            <p>
+              To the fullest extent permitted by Indian law, RIVQ and its developers shall not be liable for any direct, indirect, incidental, or consequential damages arising from agreements, code contributions, intellectual property disputes, or interactions between users introduced through the platform.
+            </p>
+          </section>
+
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">7. Governing Law & Jurisdiction</h2>
             <p>
               These Terms shall be governed by and construed in accordance with the laws of India. Any disputes arising hereunder shall be subject to the exclusive jurisdiction of the competent courts in New Delhi / Gautam Buddha Nagar, Uttar Pradesh.
             </p>

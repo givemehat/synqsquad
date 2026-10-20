@@ -6,9 +6,9 @@ export async function GET() {
       relation: ["delegate_permission/common.handle_all_urls"],
       target: {
         namespace: "android_app",
-        package_name: "com.synqsquad.app",
+        package_name: "com.rivq.app",
         "sha256_cert_fingerprints": [
-          "5D:16:70:7C:8B:D0:BE:A5:6B:F5:EF:ED:79:F5:B7:F0:38:FE:DB:72:12:E2:D8:9B:4C:FE:C6:C1:7D:00:F3:BD",
+          "BC:8E:FA:C2:15:09:23:6F:97:7C:7A:E8:84:B4:C9:8D:81:E1:55:16:55:53:51:37:98:CC:B5:BD:5C:29:61:C9",
         ],
       },
     },

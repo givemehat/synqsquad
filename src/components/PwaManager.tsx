@@ -61,7 +61,7 @@ export function PwaManager({ children }: { children: React.ReactNode }) {
                     installingWorker.state === "installed" &&
                     navigator.serviceWorker.controller
                   ) {
-                    console.log("SynqSquad update available.");
+                    // Update available
                   }
                 };
               }

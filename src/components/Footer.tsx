@@ -7,11 +7,15 @@ export function Footer() {
     <footer className="mt-auto border-t border-[var(--border-default)] bg-[var(--bg-canvas)] text-[var(--text-tertiary)] text-xs py-10 transition-colors">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] font-bold flex items-center justify-center text-[11px]">
-              S
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-md overflow-hidden border border-[var(--border-subtle)] bg-black flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="RIVQ"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <span className="font-semibold text-[var(--text-primary)]">SynqSquad</span>
+            <span className="font-semibold text-[var(--text-primary)]">RIVQ</span>
             <span className="text-[var(--text-tertiary)]">•</span>
             <span className="text-[var(--text-secondary)]">
               Direct collaborator matchmaking on verified Gmail.
@@ -120,7 +124,7 @@ export function Footer() {
         </div>
 
         <div className="pt-4 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between text-[11px] gap-2">
-          <span>&copy; {new Date().getFullYear()} SynqSquad. Neutral technological intermediary.</span>
+          <span>&copy; {new Date().getFullYear()} RIVQ. Neutral technological intermediary.</span>
           <span className="font-mono text-[10px]">DPDP Act 2023 & GDPR Compliant</span>
         </div>
       </div>

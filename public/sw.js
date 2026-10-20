@@ -2,11 +2,12 @@
 // Implements App Shell caching, read-only listings Stale-While-Revalidate,
 // offline fallback, and strict zero-caching of authenticated/private data.
 
-const CACHE_NAME = "synqsquad-v1.0.0";
+const CACHE_NAME = "synqsquad-v1.1.0";
 const OFFLINE_FALLBACK_URL = "/offline";
 
 const STATIC_PRECACHE = [
   "/",
+  "/people",
   "/offline",
   "/favicon.ico",
   "/manifest.webmanifest",
@@ -52,6 +53,9 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/api/user") ||
     url.pathname.startsWith("/api/report") ||
     url.pathname.startsWith("/api/contact") ||
+    url.pathname.startsWith("/api/blocks") ||
+    url.pathname.startsWith("/api/people/outreach") ||
+    url.pathname.startsWith("/api/ai") ||
     url.searchParams.get("auth") === "true" ||
     request.headers.has("Authorization");
 
@@ -111,7 +115,7 @@ self.addEventListener("fetch", (event) => {
         const cachedPage = await cache.match(request);
         if (cachedPage) return cachedPage;
         const fallback = await cache.match(OFFLINE_FALLBACK_URL);
-        return fallback || new Response("Offline - SynqSquad", {
+        return fallback || new Response("Offline - RIVQ", {
           status: 503,
           headers: { "Content-Type": "text/plain" },
         });

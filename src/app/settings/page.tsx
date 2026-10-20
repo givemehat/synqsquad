@@ -74,7 +74,7 @@ export default function SettingsPage() {
               Appearance
             </h2>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              Choose your interface color scheme. SynqSquad uses warm near-black for dark mode and high-contrast editorial gray for light mode.
+              Choose your interface color scheme. RIVQ uses warm near-black for dark mode and high-contrast editorial gray for light mode.
             </p>
           </div>
 
@@ -129,7 +129,7 @@ export default function SettingsPage() {
                 <span>Outreach & Email Hygiene</span>
               </h2>
               <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-                SynqSquad does not send marketing digests, uninvited newsletters, or intermediary emails. All communication happens exclusively between verified Google accounts on Gmail.
+                RIVQ does not send marketing digests, uninvited newsletters, or intermediary emails. All communication happens exclusively between verified Google accounts on Gmail.
               </p>
             </div>
             {savedNotice && (

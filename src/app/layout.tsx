@@ -15,7 +15,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://synqsquad.vercel.app"),
-  title: "SynqSquad | Find Hackathon Teammates & Research Co-Authors",
+  title: "RIVQ | Find Hackathon Teammates & Research Co-Authors",
   description:
     "The 0-friction platform to find complementary hackathon teammates and research paper collaborators. One person finds one person, and you talk directly on Gmail.",
   keywords: [
@@ -26,30 +26,32 @@ export const metadata: Metadata = {
     "AI paper co-author",
     "NeurIPS collaborator",
   ],
-  authors: [{ name: "SynqSquad Team" }],
+  authors: [{ name: "RIVQ Team" }],
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SynqSquad",
+    title: "RIVQ",
   },
   icons: {
     icon: "/favicon.ico",
-    apple: "/icons/icon-192.png",
+    apple: "/apple-icon.png",
   },
   openGraph: {
-    title: "SynqSquad | Match & Build Winning Teams",
+    title: "RIVQ | Match & Build Winning Teams",
     description:
       "Find hackathon partners & research collaborators. Zero noise, verified Google accounts, talk directly on Gmail.",
     type: "website",
     url: "https://synqsquad.vercel.app",
-    siteName: "SynqSquad",
+    siteName: "RIVQ",
+    images: [{ url: "/og-image.png", width: 512, height: 512, alt: "RIVQ" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SynqSquad | Find Hackathon Teammates & Research Co-Authors",
+    title: "RIVQ | Find Hackathon Teammates & Research Co-Authors",
     description:
       "Zero noise, verified Google accounts. One person finds one person and connects directly on Gmail.",
+    images: ["/og-image.png"],
   },
   verification: {
     google: "google61d96b399c5e87d8",

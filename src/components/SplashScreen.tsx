@@ -95,14 +95,18 @@ export function SplashScreen() {
     >
       <div className="flex flex-col items-center gap-4 max-w-xs w-full px-6 text-center">
         {/* Brand Mark */}
-        <div className="w-12 h-12 rounded-xl bg-[var(--accent-primary)] flex items-center justify-center text-white font-bold text-xl shadow-xs">
-          S
+        <div className="w-16 h-16 rounded-2xl overflow-hidden border border-[var(--border-subtle)] bg-black shadow-md flex items-center justify-center">
+          <img
+            src="/logo.png"
+            alt="RIVQ"
+            className="w-full h-full object-cover"
+          />
         </div>
 
         {/* Brand Name & USP Subtitle */}
         <div className="space-y-1">
-          <h1 className="font-bold text-lg tracking-tight text-[var(--text-primary)]">
-            SynqSquad
+          <h1 className="font-bold text-xl tracking-tight text-[var(--text-primary)]">
+            RIVQ
           </h1>
           <p className="text-xs text-[var(--text-secondary)] font-medium">
             Find your one teammate. Talk on Gmail.

@@ -26,51 +26,44 @@ export function Navbar({ onOpenCreate, onOpenProfile, activeTab, setActiveTab }:
           <Link
             href="/"
             onClick={() => setActiveTab("all")}
-            className="flex items-center gap-2.5 cursor-pointer text-inherit no-underline"
+            className="flex items-center gap-2.5 cursor-pointer text-inherit no-underline group"
           >
-            <div className="w-7 h-7 rounded-lg bg-[var(--accent-primary)] flex items-center justify-center text-white font-bold text-xs select-none">
-              S
+            <div className="w-8 h-8 rounded-lg overflow-hidden border border-[var(--border-subtle)] shadow-sm flex items-center justify-center bg-black">
+              <img
+                src="/logo.png"
+                alt="RIVQ Logo"
+                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+              />
             </div>
-            <span className="font-bold text-sm tracking-tight text-[var(--text-primary)]">
-              SynqSquad
+            <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">
+              RIVQ
             </span>
           </Link>
 
-          {/* Clean 3-Tab Segmented Control */}
+          {/* Clean Navigation Control */}
           <nav className="hidden sm:flex items-center gap-1 text-xs">
-            <button
-              type="button"
+            <Link
+              href="/"
               onClick={() => setActiveTab("all")}
               className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                activeTab === "all"
+                activeTab !== "people"
                   ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-default)]"
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               }`}
             >
-              All Listings
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("hackathon")}
+              Requisitions
+            </Link>
+            <Link
+              href="/people"
+              onClick={() => setActiveTab("people")}
               className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                activeTab === "hackathon"
+                activeTab === "people"
                   ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-default)]"
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               }`}
             >
-              Hackathons
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("research")}
-              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                activeTab === "research"
-                  ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] border border-[var(--border-default)]"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              }`}
-            >
-              Research
-            </button>
+              Find Squadmates
+            </Link>
           </nav>
         </div>
 
