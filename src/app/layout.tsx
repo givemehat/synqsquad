@@ -15,43 +15,46 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://synqsquad.vercel.app"),
-  title: "RIVQ | Find Hackathon Teammates & Research Co-Authors",
+  title: "SynqSquad | Find Hackathon Teammates & Research Co-Authors",
   description:
-    "The 0-friction platform to find complementary hackathon teammates and research paper collaborators. One person finds one person, and you talk directly on Gmail.",
+    "Two-way discovery platform for hackathons and academic research papers. Find open requisitions or be discovered in the Talent Directory. One person finds one person, and you talk directly on Gmail.",
   keywords: [
+    "SynqSquad",
     "hackathon teammate finder",
     "research collaborator",
     "SIH 2026 team finder",
     "ETHGlobal teammate",
     "AI paper co-author",
     "NeurIPS collaborator",
+    "open to collaborate",
+    "talent directory",
   ],
-  authors: [{ name: "RIVQ Team" }],
+  authors: [{ name: "SynqSquad Team" }],
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "RIVQ",
+    title: "SynqSquad",
   },
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-icon.png",
   },
   openGraph: {
-    title: "RIVQ | Match & Build Winning Teams",
+    title: "SynqSquad | Match & Build Winning Teams",
     description:
-      "Find hackathon partners & research collaborators. Zero noise, verified Google accounts, talk directly on Gmail.",
+      "Two-way discovery for hackathons and research collaborations. Zero noise, verified Google accounts, connect directly on Gmail.",
     type: "website",
     url: "https://synqsquad.vercel.app",
-    siteName: "RIVQ",
-    images: [{ url: "/og-image.png", width: 512, height: 512, alt: "RIVQ" }],
+    siteName: "SynqSquad",
+    images: [{ url: "/icon.png", width: 512, height: 512, alt: "SynqSquad Logo" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RIVQ | Find Hackathon Teammates & Research Co-Authors",
+    title: "SynqSquad | Find Hackathon Teammates & Research Co-Authors",
     description:
-      "Zero noise, verified Google accounts. One person finds one person and connects directly on Gmail.",
-    images: ["/og-image.png"],
+      "Two-way discovery for hackathons and research. Verified Google accounts, talk directly on Gmail.",
+    images: ["/icon.png"],
   },
   verification: {
     google: "google61d96b399c5e87d8",

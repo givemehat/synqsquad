@@ -6,7 +6,7 @@ Use this comprehensive reference when completing the required declaration forms 
 
 ## 1. App Access (Mandatory Review Credentials)
 
-Because SynqSquad requires Google Sign-In to post requisitions or reveal unmasked Gmail addresses to prevent scraper abuse, Google Play reviewers **must** be provided credentials or test instructions to access all features.
+Because RIVQ requires Google Sign-In to post requisitions or reveal unmasked Gmail addresses to prevent scraper abuse, Google Play reviewers **must** be provided credentials or test instructions to access all features.
 
 In Google Play Console, go to **App content** > **App access** and select:
 **"All or some functionality is restricted"** > Click **"Add new instructions"**:
@@ -16,7 +16,7 @@ In Google Play Console, go to **App content** > **App access** and select:
 | **Title** | Google Reviewer Sign-In Access |
 | **User name / Email** | `synqsquad.reviewer@gmail.com` *(or your test Google account)* |
 | **Password** | *(Provide the app password or note: "OAuth Test Mode")* |
-| **Explanation / Instructions for Reviewer** | SynqSquad uses Google Identity Services (OAuth 2.0) with basic profile and email scopes (`email`, `profile`). Reviewers can tap the "Sign in with Google" button in the top navigation bar or inside any listing card drawer. When prompted, select the configured test Google account. Once authenticated, reviewers have unrestricted access to: (1) create hackathon/research requisitions, (2) reveal unmasked collaborator emails and trigger Gmail compose drafts, (3) export user data in JSON format, and (4) execute immediate permanent account erasure in Account Settings. Browsing open listings and offline caching are available immediately without login. |
+| **Explanation / Instructions for Reviewer** | RIVQ uses Google Identity Services (OAuth 2.0) with basic profile and email scopes (`email`, `profile`). Reviewers can tap the "Sign in with Google" button in the top navigation bar or inside any listing card drawer. When prompted, select the configured test Google account. Once authenticated, reviewers have unrestricted access to: (1) create hackathon/research requisitions, (2) reveal unmasked collaborator emails and trigger Gmail compose drafts, (3) export user data in JSON format, and (4) execute immediate permanent account erasure in Account Settings. Browsing open listings and offline caching are available immediately without login. |
 
 ---
 
@@ -44,8 +44,8 @@ In Google Play Console, go to **App content** > **Data safety**.
 | **Email Address** (Personal info) | **Yes** | **No** | App functionality, Account management, Peer-to-peer outreach | **No** (Stored in user database) | **Required** (Provided via Google Auth) |
 | **User IDs** (Identifiers) | **Yes** | **No** | Account management | **No** (Primary key) | **Required** |
 | **Other Personal Info** (College/Affiliation, Role, Bio) | **Yes** | **No** | App functionality (Collaborator matching) | **No** | **Optional** (Can be skipped during onboarding) |
-| **User Content / Requisitions** (Title, skills, description) | **Yes** | **No** | App functionality (Public listing feed) | **No** (Stored until 30-day auto-expiry or user deletion) | **Optional** (Only when user creates listing) |
-| **App Activity / Outreach history** (10/day rate limit counters) | **Yes** | **No** | Fraud prevention, security, and spam protection | **No** (Rolling 24-hour audit log) | **Required** for connect actions |
+| **User Content / Requisitions & Talent Profiles** (Title, skills, headline, bio, outreach messages) | **Yes** | **No** | App functionality (Public requisition feed & Talent directory) | **No** (Stored until deleted by user or auto-expired) | **Optional** (Created voluntarily by user) |
+| **App Activity / Outreach history** (10/day shared rate limit counters) | **Yes** | **No** | Fraud prevention, security, and spam protection | **No** (Rolling 24-hour audit log) | **Required** for connect actions |
 | **Crash logs / Diagnostics** | **No** | **No** | N/A | N/A | N/A |
 | **Financial Info** | **No** | **No** | N/A | N/A | N/A |
 | **Location (GPS / Fine)** | **No** | **No** | N/A | N/A | N/A |
@@ -113,7 +113,7 @@ In Google Play Console, go to **App content** > **Ads**:
 In Google Play Console, go to **App content** > **Financial features**:
 
 * **Does your app provide financial features (banking, loans, crypto trading, wallets)?**  
-  👉 **No financial features**. (SynqSquad strictly facilitates hackathon and research paper team collaboration).
+  👉 **No financial features**. (RIVQ strictly facilitates hackathon and research paper team collaboration).
 
 ---
 
@@ -122,7 +122,7 @@ In Google Play Console, go to **App content** > **Financial features**:
 In Google Play Console, go to **App content** > **Government apps**:
 
 * **Is your app developed by or on behalf of a government entity?**  
-  👉 **No**. (SynqSquad is an independent technological platform).
+  👉 **No**. (RIVQ is an independent technological platform).
 
 ---
 
@@ -132,6 +132,6 @@ Google Play strictly regulates apps featuring user-generated content (listings, 
 
 * ✅ **Terms of Service prohibiting abuse:** Present in app footer and at `/terms`.
 * ✅ **Community Guidelines:** Clear standards defining acceptable requisitions and zero tolerance for harassment at `/guidelines`.
-* ✅ **In-App Reporting:** Accessible on every listing drawer via **"Report Requisition"** linking to `/report`.
-* ✅ **In-App Blocking:** Accessible on every listing drawer via **"Block Creator"**, instantly removing that creator's requisitions from the user's feed.
-* ✅ **Moderation process:** Reports are logged to `data/reports.json` (and Supabase `reports` table) with designated grievance officer review within 24 hours.
+* ✅ **In-App Reporting:** Accessible on every listing drawer and talent profile via **"Report"** submitting directly to our server-side moderation triage table (`/api/report`).
+* ✅ **In-App Blocking:** Accessible on every listing drawer and talent profile via **"Block Member"**, instantly removing that user's content in both directions across feed and search.
+* ✅ **Moderation process:** Reports are logged to the Supabase `reports` database with designated grievance officer review within 24 hours.

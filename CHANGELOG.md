@@ -2,7 +2,23 @@
 
 All notable changes to the SynqSquad project are documented in this file.
 
-## [1.4.0] - 2026-10-20 — Identity Verification, Database RLS & Single Auth Hardening
+## [1.5.0] - 2026-10-20 — Two-Way Discovery (Talent Profiles & Outreach) & Pre-Launch Audit
+
+### Phase A: Two-Way Discovery & Talent Directory
+- **Talent Profiles ("Availability Cards"):** Created the Supply-Side talent directory (`/people`) where developers and researchers publish their skills, goals, bio, allow-listed portfolio links (GitHub, LinkedIn), and collaboration availability (Open/Busy/Hidden).
+- **Two-Way Collaboration Outreach:** Built Team → Person outreach flow allowing project leads to send personalized collaboration invitations with optional attached requisitions.
+- **Combined 10 Connects/Day Rate Limit:** Unified the rate limiting engine (`record_outreach_rate_limited`) so that requisition connects and talent outreaches share a single 10-connects/day quota per user, serialized by PostgreSQL advisory transaction locks.
+- **Recipient Resolution Inbox:** Built recipient response handling (`/api/people/outreach/[id]`) allowing recipients to Accept (reveals verified Gmail contact info to both parties) or Decline requests with strict IDOR protections.
+- **Database Schema Migration (`20261020000002_talent_profiles_and_outreach.sql`):** Added `talent_profiles` and `outreach` tables with Row-Level Security, public masked views, and updated `delete_user_data_cascade`.
+- **Comprehensive DPDP & Deletion Coverage:** Updated data export (`/api/user/export`) and cascade account erasure (`/api/user` and `/account-deletion`) to completely include and purge talent profiles and outreach history.
+
+### Phase B: Security Hardening & Android Launch Audit
+- **Upload Keystore Cryptographic Rotation:** Rotated upload keystore using OpenJDK 21 keytool and generated a new high-entropy RSA 2048 keypair. Keystore secrets stored strictly in untracked local files.
+- **Digital Asset Links Updated:** Synchronized new SHA-256 fingerprint (`BC:8E:FA:C2:...:C9`) across `public/.well-known/assetlinks.json` and dynamic App Router endpoint.
+- **Target SDK 36 & Verified Binaries:** Rebuilt and verified `android/app-release.aab` (versionCode 2, versionName 1.1.0) targeting Android 16 (API 36) with only `android.permission.INTERNET`.
+- **Pre-Launch Hygiene & Dependency Audit:** Cleaned unused starter assets, eliminated console logs and unused variables. 0 ESLint errors/warnings, 0 TypeScript errors.
+- **Automated Verification:** 133 automated tests passing (101 in native `node:test` + 32 in Supabase/Security suite).
+
 
 ### Critical Identity & Authentication Overhaul (Step 1)
 - **Eliminated Client-Supplied Identity:** Removed all reliance on client-supplied `ownerEmail`, `ownerId`, `fromUserEmail`, and `x-user-email` headers. Caller identity across every mutating API route is strictly extracted and verified from the Supabase session JWT (`getAuthenticatedUser` via `supabase.auth.getUser(token)`).

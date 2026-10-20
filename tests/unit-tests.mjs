@@ -1,4 +1,4 @@
-// Unit and Security tests for SynqSquad
+// Unit and Security tests for RIVQ
 // Validates Supabase RLS logic, ownership rules, email privacy masking, and rate limits
 
 import { validateListingInput, detectSpam, sanitizeText } from "../src/lib/validations.ts";
@@ -27,7 +27,7 @@ function assert(condition, message) {
 }
 
 async function runAllTests() {
-  console.log("\n🧪 Running SynqSquad Supabase & Security Unit Tests...");
+  console.log("\n🧪 Running RIVQ Supabase & Security Unit Tests...");
 
   // 1. Sanitization & XSS
   console.log("\n[Test 1] Input Sanitization & Anti-XSS");

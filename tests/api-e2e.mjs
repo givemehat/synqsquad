@@ -1,4 +1,4 @@
-// End-to-end API verification test for SynqSquad (Gmail-only architecture with JWT Auth)
+// End-to-end API verification test for RIVQ (Gmail-only architecture with JWT Auth)
 const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:3000";
 
 function createTestJwt({ id = "usr-test-99", email = "rajnishsingh.test@gmail.com", name = "Rajnish Singh" } = {}) {
@@ -18,7 +18,7 @@ const applicantToken = createTestJwt({ id: "usr-applicant-1", email: "applicant@
 const imposterToken = createTestJwt({ id: "usr-imposter-2", email: "imposter@gmail.com", name: "Imposter User" });
 
 async function runTests() {
-  console.log(`\n🧪 Running SynqSquad Gmail-Only E2E Test Suite against ${BASE_URL}...`);
+  console.log(`\n🧪 Running RIVQ Gmail-Only E2E Test Suite against ${BASE_URL}...`);
   let passed = 0;
   let failed = 0;
 
