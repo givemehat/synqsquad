@@ -80,11 +80,24 @@ async function main() {
     { stdio: "ignore" }
   );
 
-  await sleep(2500);
+  console.log("Waiting for Chrome CDP to be available...");
+  let targets = null;
+  for (let i = 0; i < 20; i++) {
+    try {
+      const versionRes = await fetch("http://127.0.0.1:9222/json/list");
+      if (versionRes.ok) {
+        targets = await versionRes.json();
+        if (Array.isArray(targets) && targets.length > 0) break;
+      }
+    } catch {}
+    await sleep(500);
+  }
+
+  if (!targets) {
+    throw new Error("Chrome CDP did not become available on 127.0.0.1:9222 within 10s");
+  }
 
   try {
-    const versionRes = await fetch("http://127.0.0.1:9222/json/list");
-    const targets = await versionRes.json();
     const pageTarget = targets.find((t) => t.type === "page") || targets[0];
     if (!pageTarget || !pageTarget.webSocketDebuggerUrl) {
       throw new Error("No page target found on Chrome");

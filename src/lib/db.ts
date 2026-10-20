@@ -1044,7 +1044,7 @@ export async function getTalentProfiles(
       query = query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
 
       const { data, count, error } = await query;
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         let rows = data as TalentProfileRow[];
         if (viewerIdOrEmail && rows.length > 0) {
           const viewerEmail = viewerIdOrEmail.includes("@") ? viewerIdOrEmail.toLowerCase().trim() : undefined;
@@ -1127,21 +1127,25 @@ export async function getTalentProfileById(
   viewerIdOrEmail?: string
 ): Promise<TalentProfile | null> {
   if (isSupabaseServerConfigured()) {
-    const supabase = getSupabaseServerClient();
-    const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
-    const { data, error } = await supabase.from(tableName).select("*").eq("id", id).maybeSingle();
+    try {
+      const supabase = getSupabaseServerClient();
+      const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
+      const { data, error } = await supabase.from(tableName).select("*").eq("id", id).maybeSingle();
 
-    if (error || !data) return null;
+      if (!error && data) {
+        if (viewerIdOrEmail) {
+          const viewerEmail = viewerIdOrEmail.includes("@") ? viewerIdOrEmail.toLowerCase().trim() : undefined;
+          if (viewerEmail) {
+            const isBlocked = await isUserBlocked(viewerEmail, data.email);
+            if (isBlocked) return null;
+          }
+        }
 
-    if (viewerIdOrEmail) {
-      const viewerEmail = viewerIdOrEmail.includes("@") ? viewerIdOrEmail.toLowerCase().trim() : undefined;
-      if (viewerEmail) {
-        const isBlocked = await isUserBlocked(viewerEmail, data.email);
-        if (isBlocked) return null;
+        return rowToTalentProfile(data as TalentProfileRow, authenticated);
       }
+    } catch {
+      // In-memory fallback
     }
-
-    return rowToTalentProfile(data as TalentProfileRow, authenticated);
   }
 
   const profile = inMemoryTalentProfiles.find((p) => p.id === id);
