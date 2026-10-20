@@ -137,6 +137,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem("rivq_user", JSON.stringify(profile));
           localStorage.setItem("synqsquad_user", JSON.stringify(profile));
           notifyAuthChange();
+          if (pendingAction) {
+            pendingAction();
+            setPendingAction(null);
+          }
         } catch {}
       }
     });
@@ -172,6 +176,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem("rivq_user", JSON.stringify(profile));
           localStorage.setItem("synqsquad_user", JSON.stringify(profile));
           notifyAuthChange();
+          if (pendingAction) {
+            pendingAction();
+            setPendingAction(null);
+          }
         } catch {}
       }
     });
@@ -179,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [user]);
+  }, [user, pendingAction]);
 
   const openAuthModal = useCallback((returnAction?: () => void) => {
     if (returnAction) {
@@ -200,7 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(
-    async (profileData?: Partial<UserProfile>): Promise<boolean> => {
+    async (_profileData?: Partial<UserProfile>): Promise<boolean> => {
       // 1. Check network connectivity
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         setLoginError("You are currently offline. Please connect to the internet to sign in.");
@@ -255,7 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoggingIn(false);
       return false;
     },
-    [pendingAction]
+    []
   );
 
   const signOut = useCallback(async () => {

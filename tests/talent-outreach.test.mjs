@@ -13,6 +13,7 @@ import {
   updateTalentProfileVisibility,
   deleteTalentProfile,
   recordOutreach,
+  recordContact,
   getOutreachForUser,
   respondToOutreach,
   blockUser,
@@ -173,6 +174,49 @@ test("Outreach: 10/day shared rate limit and 50 parallel requests burst", async 
   assert.equal(successes.length, 10, "Strictly capped at max 10 per day");
   assert.equal(failures.length, 40, "Excess burst requests rejected");
   assert.ok(failures[0].error?.includes("limit reached"));
+});
+
+test("Outreach: Shared 10/day budget between listing contacts and talent outreach", async () => {
+  const sharedEmail = "shared.budget.user@gmail.com";
+  const sharedId = "usr-shared-01";
+
+  // Send 5 listing contacts
+  for (let i = 0; i < 5; i++) {
+    const res = await recordContact(sharedEmail, "lst-neurips-mri-02");
+    assert.equal(res.success, true);
+  }
+
+  // Send 5 talent outreaches
+  for (let i = 0; i < 5; i++) {
+    const res = await recordOutreach(
+      sharedId,
+      sharedEmail,
+      "Shared User",
+      "usr-dev-02",
+      "prf-dev-systems-02",
+      null,
+      `Outreach message #${i + 1} for team collaboration.`
+    );
+    assert.equal(res.success, true);
+  }
+
+  // 11th request (via outreach) must be rejected
+  const rejectedOutreach = await recordOutreach(
+    sharedId,
+    sharedEmail,
+    "Shared User",
+    "usr-dev-02",
+    "prf-dev-systems-02",
+    null,
+    "11th attempt that must be rejected."
+  );
+  assert.equal(rejectedOutreach.success, false);
+  assert.ok(rejectedOutreach.error?.includes("limit reached"));
+
+  // 11th request (via contact) must also be rejected
+  const rejectedContact = await recordContact(sharedEmail, "lst-neurips-mri-02");
+  assert.equal(rejectedContact.success, false);
+  assert.ok(rejectedContact.error?.includes("limit reached"));
 });
 
 // 4. UGC Safety & Mutual Blocking

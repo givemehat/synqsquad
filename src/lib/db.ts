@@ -485,11 +485,16 @@ export async function recordContact(
   }
 
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const recentContacts = inMemoryContacts.filter(
+  const contactCount = inMemoryContacts.filter(
     (c) => c.fromUserEmail.toLowerCase() === email && c.createdAt >= oneDayAgo
-  );
+  ).length;
+  const outreachCount = inMemoryOutreach.filter(
+    (o) => o.senderEmail && o.senderEmail.toLowerCase() === email && o.createdAt >= oneDayAgo
+  ).length;
 
-  if (recentContacts.length >= 10) {
+  const totalUsed = contactCount + outreachCount;
+
+  if (totalUsed >= 10) {
     return {
       success: false,
       error: "Daily outreach limit reached (10/day). This protects creators from mass inquiries.",
@@ -508,7 +513,7 @@ export async function recordContact(
 
   return {
     success: true,
-    remainingToday: 9 - recentContacts.length,
+    remainingToday: 9 - totalUsed,
     contactId: contactRecord.id,
     recipientEmail: listing.ownerEmail,
     recipientName: listing.ownerName,
