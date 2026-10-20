@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Flag, Check, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { authFetch } from "@/lib/api-client";
 
 export default function ReportPage() {
   const { user, openAuthModal } = useAuth();
@@ -33,11 +34,10 @@ export default function ReportPage() {
     setErrorMsg("");
 
     try {
-      const res = await fetch("/api/report", {
+      const res = await authFetch("/api/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reporterEmail: user.email,
           targetType,
           targetId: targetId.trim(),
           reason,

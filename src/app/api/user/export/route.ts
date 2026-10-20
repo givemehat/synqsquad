@@ -1,24 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exportUserData } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/auth-server";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const email = searchParams.get("email");
-
-    if (!email) {
+    // 1. Authenticate caller strictly via verified session JWT
+    const auth = await getAuthenticatedUser(request);
+    if (!auth.user) {
       return NextResponse.json(
-        { success: false, error: "email parameter is required" },
-        { status: 400 }
+        { success: false, error: auth.error || "Authentication required to export data." },
+        { status: auth.status }
       );
     }
 
-    const exportData = await exportUserData(email);
+    // Export strictly scoped to caller's verified identity
+    const exportData = await exportUserData(auth.user.id, auth.user.email);
     return new NextResponse(JSON.stringify(exportData, null, 2), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
         "Content-Disposition": `attachment; filename="synqsquad-data-${Date.now()}.json"`,
+        "Cache-Control": "no-store, max-age=0",
       },
     });
   } catch (error: unknown) {

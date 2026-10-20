@@ -1,5 +1,21 @@
-// End-to-end API verification test for SynqSquad (Gmail-only architecture)
+// End-to-end API verification test for SynqSquad (Gmail-only architecture with JWT Auth)
 const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:3000";
+
+function createTestJwt({ id = "usr-test-99", email = "rajnishsingh.test@gmail.com", name = "Rajnish Singh" } = {}) {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    sub: id,
+    id,
+    email,
+    name,
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  })).toString("base64url");
+  return `${header}.${payload}.test_sig`;
+}
+
+const ownerToken = createTestJwt({ id: "usr-owner-99", email: "rajnishsingh.test@gmail.com", name: "Rajnish Singh" });
+const applicantToken = createTestJwt({ id: "usr-applicant-1", email: "applicant@gmail.com", name: "Applicant User" });
+const imposterToken = createTestJwt({ id: "usr-imposter-2", email: "imposter@gmail.com", name: "Imposter User" });
 
 async function runTests() {
   console.log(`\n🧪 Running SynqSquad Gmail-Only E2E Test Suite against ${BASE_URL}...`);
@@ -27,15 +43,22 @@ async function runTests() {
     assert(getData.data.length >= 12, `12 Realistic Seed listings present (count: ${getData.data.length})`);
     assert(getData.data[0].ownerEmail.includes("••"), "Public view masks owner email to protect privacy");
 
-    // 2. GET /api/listings?auth=true (Authenticated check)
-    console.log("\n[Test 2] GET /api/listings?auth=true");
-    const authGetRes = await fetch(`${BASE_URL}/api/listings?auth=true`);
-    const authGetData = await authGetRes.json();
-    assert(authGetRes.status === 200, "Status is 200 OK");
-    assert(authGetData.data[0].ownerEmail.includes("@gmail.com"), "Authenticated view provides verified Gmail for direct connect");
+    // 2. POST /api/listings without token (Must be rejected with 401)
+    console.log("\n[Test 2] POST /api/listings (Unauthenticated rejection)");
+    const unauthPost = await fetch(`${BASE_URL}/api/listings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Unauthenticated Requisition Submission",
+        event: "Hackathon",
+        skillsNeeded: ["Python"],
+        description: "Should be rejected because caller has no session token.",
+      }),
+    });
+    assert(unauthPost.status === 401, "Unauthenticated POST rejected with 401 Unauthorized");
 
-    // 3. POST /api/listings (Create requirement)
-    console.log("\n[Test 3] POST /api/listings (Create Requirement)");
+    // 3. POST /api/listings with verified token (Create requirement)
+    console.log("\n[Test 3] POST /api/listings (Authenticated with verified token)");
     const newListingPayload = {
       title: "Test Autonomous Agricultural Drone for SIH 2026",
       event: "Smart India Hackathon 2026",
@@ -45,81 +68,89 @@ async function runTests() {
       slots: 2,
       totalSlots: 4,
       description: "Testing end-to-end integration for automated team matchmaking and Gmail contact routing.",
-      ownerId: "usr-test-99",
-      ownerName: "Rajnish Singh",
-      ownerEmail: "rajnishsingh.test@gmail.com",
       ownerCollege: "Gautam Buddha University",
       ownerRole: "Robotics Lead",
     };
 
     const postRes = await fetch(`${BASE_URL}/api/listings`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${ownerToken}`,
+      },
       body: JSON.stringify(newListingPayload),
     });
     const postData = await postRes.json();
     assert(postRes.status === 201, "Status is 201 Created");
     assert(postData.data?.id?.startsWith("lst-"), "Listing assigned unique ID");
-    assert(postData.data?.ownerEmail === "rajnishsingh.test@gmail.com", "Owner email persisted");
+    assert(postData.data?.ownerEmail === "rajnishsingh.test@gmail.com", "Owner email verified from token");
 
     const createdId = postData.data.id;
 
-    // 4. POST /api/contact (Gmail Connect Flow & 10/day rate limit)
-    console.log("\n[Test 4] POST /api/contact (Connect on Gmail & Rate Limit)");
-    const contactRes = await fetch(`${BASE_URL}/api/contact`, {
+    // 4. POST /api/contact without token (Must be rejected)
+    console.log("\n[Test 4] POST /api/contact (Unauthenticated rejection)");
+    const unauthContact = await fetch(`${BASE_URL}/api/contact`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fromUserEmail: "applicant@gmail.com",
-        listingId: createdId,
-      }),
+      body: JSON.stringify({ listingId: createdId }),
+    });
+    assert(unauthContact.status === 401, "Unauthenticated contact attempt rejected with 401 Unauthorized");
+
+    // 5. POST /api/contact with verified token (Gmail Connect Flow & 10/day rate limit)
+    console.log("\n[Test 5] POST /api/contact (Connect on Gmail with verified token)");
+    const contactRes = await fetch(`${BASE_URL}/api/contact`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${applicantToken}`,
+      },
+      body: JSON.stringify({ listingId: createdId }),
     });
     const contactData = await contactRes.json();
     assert(contactRes.status === 200, "Contact recorded with 200 OK");
     assert(contactData.data?.recipientEmail === "rajnishsingh.test@gmail.com", "Recipient email resolved for Gmail compose URL");
     assert(typeof contactData.data?.remainingToday === "number", "Daily contact quota returned");
 
-    // 5. GET /api/contact?email=applicant@gmail.com (Contacted history)
-    console.log("\n[Test 5] GET /api/contact (Fetch Contacted List)");
-    const historyRes = await fetch(`${BASE_URL}/api/contact?email=applicant@gmail.com`);
+    // 6. GET /api/contact with verified token (Fetch Contacted List)
+    console.log("\n[Test 6] GET /api/contact (Fetch Contacted List for caller)");
+    const historyRes = await fetch(`${BASE_URL}/api/contact`, {
+      headers: { Authorization: `Bearer ${applicantToken}` },
+    });
     const historyData = await historyRes.json();
     assert(historyRes.status === 200, "Status is 200 OK");
     assert(historyData.data.some((l) => l.id === createdId), "Listing saved to applicant's Contacted list");
 
-    // 6. PATCH /api/listings/[id] (Mark as filled by verified owner)
-    console.log("\n[Test 6] PATCH /api/listings/[id] (Mark Filled)");
-    // 6a: Unauthorized attempt
+    // 7. PATCH /api/listings/[id] IDOR Defense: Imposter rejected
+    console.log("\n[Test 7] PATCH /api/listings/[id] (IDOR Defense — Imposter Rejected)");
     const unauthorizedPatch = await fetch(`${BASE_URL}/api/listings/${createdId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ownerEmail: "imposter@gmail.com",
-        status: "filled",
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${imposterToken}`,
+      },
+      body: JSON.stringify({ status: "filled" }),
     });
-    assert(unauthorizedPatch.status === 403, "Rejects update from non-owner email");
+    assert(unauthorizedPatch.status === 403, "Rejects update from non-owner token (403 Forbidden)");
 
-    // 6b: Authorized attempt
+    // 8. PATCH /api/listings/[id] Owner Authorized: Mark Filled
+    console.log("\n[Test 8] PATCH /api/listings/[id] (Owner Marks Filled)");
     const authorizedPatch = await fetch(`${BASE_URL}/api/listings/${createdId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ownerEmail: "rajnishsingh.test@gmail.com",
-        status: "filled",
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${ownerToken}`,
+      },
+      body: JSON.stringify({ status: "filled" }),
     });
     const authorizedPatchData = await authorizedPatch.json();
     assert(authorizedPatch.status === 200, "Owner successfully marks listing as filled");
     assert(authorizedPatchData.data?.status === "filled", "Status changed to 'filled'");
 
-    // 7. DELETE /api/listings/[id] (Delete by verified owner)
-    console.log("\n[Test 7] DELETE /api/listings/[id] (Delete Listing)");
+    // 9. DELETE /api/listings/[id] (Delete by verified owner)
+    console.log("\n[Test 9] DELETE /api/listings/[id] (Delete Listing)");
     const deleteRes = await fetch(`${BASE_URL}/api/listings/${createdId}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ownerEmail: "rajnishsingh.test@gmail.com",
-      }),
+      headers: { Authorization: `Bearer ${ownerToken}` },
     });
     const deleteData = await deleteRes.json();
     assert(deleteRes.status === 200, "Delete succeeded with 200 OK");

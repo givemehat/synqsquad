@@ -1,0 +1,79 @@
+name: SynqSquad CI & Security Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  security-and-build:
+    name: Lint, Test, Audit & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secrets Scan (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Dependency Security Audit
+        run: npm audit --audit-level=high
+
+      - name: TypeScript Type Check
+        run: npx tsc --noEmit
+
+      - name: ESLint Code Quality
+        run: npm run lint
+
+      - name: Run Test Suite
+        run: npm test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+
+      - name: Production Webpack Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_APP_URL: "https://synqsquad.vercel.app"
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL || 'https://mock.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY || 'mock-anon-key' }}
+
+      - name: Run E2E API Verification Suite
+        run: |
+          npx next start -p 3000 &
+          SERVER_PID=$!
+          sleep 4
+          node tests/api-e2e.mjs
+          kill $SERVER_PID
+        env:
+          BASE_URL: "http://127.0.0.1:3000"
+
+      - name: Verify Client Bundle Secrets Leakage
+        run: |
+          echo "Scanning client-side bundle traces for accidental server secrets..."
+          if grep -rn "SUPABASE_SERVICE_ROLE_KEY" .next/static 2>/dev/null; then
+            echo "CRITICAL: Service role key string detected in client bundle!"
+            exit 1
+          fi
+          if grep -rn "ANTHROPIC_API_KEY" .next/static 2>/dev/null; then
+            echo "CRITICAL: Anthropic API key string detected in client bundle!"
+            exit 1
+          fi
+          echo "✓ Client bundle is clean: zero server secrets detected."

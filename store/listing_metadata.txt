@@ -1,0 +1,76 @@
+# ==============================================================================
+# SynqSquad — Google Play Store Listing Metadata
+# ==============================================================================
+
+[APP NAME] (Maximum 30 characters)
+SynqSquad: Teammate Finder
+(Character count: 26 / 30)
+
+[SHORT DESCRIPTION] (Maximum 80 characters)
+Find hackathon and research teammates. Connect directly on verified Gmail.
+(Character count: 74 / 80)
+
+[FULL DESCRIPTION] (Maximum 4000 characters)
+SynqSquad is a focused teammate matchmaking platform built for university students, independent developers, and academic researchers.
+
+When tackling a major hackathon (such as Smart India Hackathon or ETHGlobal) or drafting an academic paper (for conferences like NeurIPS, ICRA, or ACL), the hardest challenge is rarely the idea—it is finding one reliable person with the exact complementary technical skill you need.
+
+SynqSquad solves this with one clear principle: one person finds one collaborator, and you communicate directly on verified Gmail. There are no closed proprietary inboxes, no chat channels to manage, no bot spam, and no algorithmic hype.
+
+Key Features:
+
+1. Browse Open Requisitions Without Login
+Explore active hackathon and research paper requirements immediately. Filter by event, domain (Machine Learning, Systems, Web3, Full-Stack, UI/UX), or specific technology stack.
+
+2. Verified Google Authentication & Privacy by Default
+Every user signs in with a verified Google account. To prevent public scrapers and data harvesters from abusing creator contacts, raw email addresses are masked across all public feeds. A creator's unmasked email is revealed only when an authenticated peer clicks "Connect on Gmail."
+
+3. Direct Gmail Outreach
+Clicking "Connect on Gmail" prepares a pre-filled, editable draft directly in your Gmail compose window with relevant context from the posting. We also provide direct clipboard copy and standard local mail client links.
+
+4. 6-Field Focused Requirement Posting
+Publish a requisition in under 30 seconds: title, event and deadline, collaboration type (Hackathon or Research), required skills, open slots, and a clear description. Postings automatically expire after 30 days to keep the feed fresh and active, with simple one-click renewal.
+
+5. Spam Protection and Rate Limiting
+To ensure creators receive genuine inquiries rather than mass solicitations, accounts are limited to 10 Gmail outreach connections per 24-hour rolling window.
+
+6. Built-in Safety & Content Moderation
+Users can report requisitions for spam or inappropriate content and instantly block creators. Blocked users' requisitions are immediately hidden from your search and feed.
+
+7. Full User Control & Data Rights
+Under India's DPDP Act 2023 and GDPR, you have complete sovereignty over your data. Download a machine-readable JSON export of your profile, listings, and outreach audit history anytime, or erase your account and all associated records permanently in one click.
+
+Whether you need a systems programmer for an embedded robotics hackathon or a co-author experienced in PyTorch for an ML manuscript, SynqSquad helps you find your teammate with zero friction.
+(Character count: 2682 / 4000)
+
+---
+
+[STORE CATEGORY & CLASSIFICATION]
+Primary Category: Social
+Secondary / Alternative: Productivity
+Content Rating: Everyone / 18+ (User-Generated Content with in-app reporting & blocking)
+
+[TAGS / KEYWORDS]
+Hackathon, Teammate Finder, Research Collaboration, Student Teams, Coding Partners, Open Source
+
+[CONTACT DETAILS]
+Developer / Publisher Email: rajnishsingh.work@gmail.com
+Grievance Officer: rajnishsingh.work@gmail.com
+Website URL: https://synqsquad.vercel.app
+
+[LEGAL & COMPLIANCE URLS]
+Privacy Policy URL: https://synqsquad.vercel.app/privacy
+Account Deletion Request URL: https://synqsquad.vercel.app/account-deletion
+Terms of Service URL: https://synqsquad.vercel.app/terms
+Community Guidelines URL: https://synqsquad.vercel.app/guidelines
+
+---
+
+[RELEASE NOTES — Version 1.0.0 (versionCode 1)]
+Welcome to the initial release of SynqSquad on Android:
+• Fast, lightweight Trusted Web Activity with full offline support for browsing listings.
+• Find hackathon partners and research paper co-authors with zero noise.
+• One-click Gmail compose links with prefilled project introduction templates.
+• Privacy by default: raw creator emails are masked for public visitors.
+• In-app reporting and user blocking for a safe, respectful community.
+• Self-serve data export and 1-click permanent account deletion under DPDP Act 2023 & GDPR.

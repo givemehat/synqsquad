@@ -16,7 +16,7 @@ import { StateView } from "@/components/StateView";
 import { Plus } from "lucide-react";
 
 export default function HomePage() {
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, blockedUsers } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [screenState, setScreenState] = useState<ScreenState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
@@ -67,6 +67,20 @@ export default function HomePage() {
       isMounted = false;
     };
   }, [fetchListings]);
+
+  // Deep-linking support: auto-open listing drawer if ?id= or ?listing= present
+  useEffect(() => {
+    if (listings.length > 0 && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get("id") || params.get("listing");
+      if (targetId) {
+        const found = listings.find((l) => l.id === targetId);
+        if (found) {
+          setSelectedListing(found);
+        }
+      }
+    }
+  }, [listings]);
 
   // Synchronize activeTab with selectedType
   const handleTabChange = (tab: string) => {
@@ -125,9 +139,16 @@ export default function HomePage() {
         }
       }
 
+      // UGC Community Safety: Filter out blocked creators
+      if (blockedUsers && blockedUsers.length > 0) {
+        if (blockedUsers.includes(l.ownerEmail.toLowerCase())) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [listings, selectedType, selectedSkill, searchQuery]);
+  }, [listings, selectedType, selectedSkill, searchQuery, blockedUsers]);
 
   const handleListingCreated = (newListing: Listing) => {
     setListings((prev) => [newListing, ...prev]);

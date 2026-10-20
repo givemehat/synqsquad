@@ -7,10 +7,12 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test tests/*.test.mjs",
-    "test:e2e": "node tests/api-e2e.mjs"
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "test:e2e": "node tests/api-e2e.mjs",
+    "seed:supabase": "node --experimental-strip-types scripts/seed-supabase.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "canvas-confetti": "^1.9.4",
     "lucide-react": "^1.16.0",
     "next": "16.4.2",

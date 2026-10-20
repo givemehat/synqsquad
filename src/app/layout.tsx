@@ -1,8 +1,20 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f9fafb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0e12" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://synqsquad.vercel.app"),
   title: "SynqSquad | Find Hackathon Teammates & Research Co-Authors",
   description:
     "The 0-friction platform to find complementary hackathon teammates and research paper collaborators. One person finds one person, and you talk directly on Gmail.",
@@ -15,6 +27,16 @@ export const metadata: Metadata = {
     "NeurIPS collaborator",
   ],
   authors: [{ name: "SynqSquad Team" }],
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SynqSquad",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/icons/icon-192.png",
+  },
   openGraph: {
     title: "SynqSquad | Match & Build Winning Teams",
     description:

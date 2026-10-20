@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Listing } from "@/types";
+import { authFetch } from "@/lib/api-client";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -48,7 +49,7 @@ export default function ProfilePage() {
 
   const fetchListings = useCallback(async () => {
     try {
-      const res = await fetch("/api/listings?auth=true");
+      const res = await authFetch("/api/listings");
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setListings(data.data);
@@ -107,11 +108,10 @@ export default function ProfilePage() {
     });
 
     try {
-      await fetch("/api/user", {
+      await authFetch("/api/user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...user,
           role: editRole,
           college: editCollege,
           bio: editBio,
@@ -130,11 +130,10 @@ export default function ProfilePage() {
   const handleToggleFilled = async (listing: Listing) => {
     const newStatus = listing.status === "filled" ? "open" : "filled";
     try {
-      const res = await fetch(`/api/listings/${listing.id}`, {
+      const res = await authFetch(`/api/listings/${listing.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ownerEmail: user.email,
           status: newStatus,
         }),
       });
@@ -151,11 +150,10 @@ export default function ProfilePage() {
 
   const handleRenew = async (listing: Listing) => {
     try {
-      const res = await fetch(`/api/listings/${listing.id}`, {
+      const res = await authFetch(`/api/listings/${listing.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ownerEmail: user.email,
           status: "renew",
         }),
       });
@@ -173,10 +171,8 @@ export default function ProfilePage() {
   const handleDeleteListing = async (id: string) => {
     if (!confirm("Delete this listing permanently?")) return;
     try {
-      const res = await fetch(`/api/listings/${id}`, {
+      const res = await authFetch(`/api/listings/${id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ownerEmail: user.email }),
       });
       const data = await res.json();
       if (data.success) {
@@ -187,18 +183,31 @@ export default function ProfilePage() {
     }
   };
 
-  const handleExportData = () => {
-    window.open(`/api/user/export?email=${encodeURIComponent(user.email)}`, "_blank");
+  const handleExportData = async () => {
+    try {
+      const res = await authFetch("/api/user/export");
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `synqsquad-data-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error("Export error:", err);
+    }
   };
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "DELETE") return;
     setIsDeleting(true);
     try {
-      const res = await fetch("/api/user", {
+      const res = await authFetch("/api/user", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email }),
       });
       const data = await res.json();
       if (data.success) {

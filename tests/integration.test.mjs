@@ -11,6 +11,9 @@ import {
   deleteUserData,
   exportUserData,
   createReport,
+  blockUser,
+  unblockUser,
+  getBlockedUsers,
 } from "../src/lib/db.ts";
 
 test("Integration: Privacy Protection & Masked Email for Logged-Out Users", async () => {
@@ -182,3 +185,89 @@ test("Integration: Moderation Report Creation", async () => {
   assert.equal(report.status, "pending");
   assert.equal(report.reporterEmail, "moderation-tester@gmail.com");
 });
+
+test("Integration: Cross-Device Blocking & UGC Safety Filtering", async () => {
+  const blockerEmail = `blocker-${Date.now()}@gmail.com`;
+  const blockedEmail = `spammer-${Date.now()}@gmail.com`;
+
+  // 1. Initially no blocks
+  let blocks = await getBlockedUsers(blockerEmail);
+  assert.equal(blocks.length, 0);
+
+  // 2. Create listing owned by spammer
+  const spamListing = await createListing({
+    ownerId: "usr-spammer",
+    ownerName: "Spammer Account",
+    ownerEmail: blockedEmail,
+    ownerCollege: "Spam University",
+    ownerRole: "Promoter",
+    type: "hackathon",
+    title: "Unsolicited Crypto Promotion",
+    event: "Web3 Hackathon",
+    deadline: "Dec 31, 2026",
+    skillsNeeded: ["Solidity"],
+    slots: 1,
+    totalSlots: 4,
+    description: "Spam listing created to test UGC blocking policy.",
+  });
+
+  // Blocker can see it initially
+  let feedBeforeBlock = await getListings(true, blockerEmail);
+  assert.ok(feedBeforeBlock.some((l) => l.id === spamListing.id));
+
+  // 3. Blocker blocks spammer
+  const blockResult = await blockUser(blockerEmail, blockedEmail);
+  assert.equal(blockResult.success, true);
+
+  // Verify getBlockedUsers returns spammer
+  blocks = await getBlockedUsers(blockerEmail);
+  assert.ok(blocks.includes(blockedEmail));
+
+  // 4. Listing is immediately hidden from blocker's feed
+  let feedAfterBlock = await getListings(true, blockerEmail);
+  assert.equal(feedAfterBlock.some((l) => l.id === spamListing.id), false);
+
+  // 5. Contact is blocked between them
+  const contactAttempt = await recordContact(blockerEmail, spamListing.id);
+  assert.equal(contactAttempt.success, false);
+  assert.equal(contactAttempt.error, "You cannot contact this user.");
+
+  // 6. Unblock restores communication
+  const unblockResult = await unblockUser(blockerEmail, blockedEmail);
+  assert.equal(unblockResult.success, true);
+  blocks = await getBlockedUsers(blockerEmail);
+  assert.equal(blocks.includes(blockedEmail), false);
+
+  // Cleanup listing
+  await deleteListing(spamListing.id, blockedEmail);
+});
+
+test("Integration: RLS Isolation — User B cannot read or modify User A's blocks", async () => {
+  const userA = `user-a-${Date.now()}@gmail.com`;
+  const userB = `user-b-${Date.now()}@gmail.com`;
+  const target = `target-${Date.now()}@gmail.com`;
+
+  // 1. User A blocks target
+  const blockResult = await blockUser(userA, target);
+  assert.equal(blockResult.success, true);
+
+  // 2. User A can see their block
+  const userABlocks = await getBlockedUsers(userA);
+  assert.deepEqual(userABlocks, [target]);
+
+  // 3. User B queries their blocks -> must NOT see User A's block
+  const userBBlocks = await getBlockedUsers(userB);
+  assert.equal(userBBlocks.includes(target), false);
+
+  // 4. User B attempts to unblock target on behalf of User A -> must not affect User A's block
+  await unblockUser(userB, target);
+  const userABlocksStillPresent = await getBlockedUsers(userA);
+  assert.deepEqual(userABlocksStillPresent, [target]);
+
+  // Clean up
+  await unblockUser(userA, target);
+  const cleaned = await getBlockedUsers(userA);
+  assert.equal(cleaned.length, 0);
+});
+
+

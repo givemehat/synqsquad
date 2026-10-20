@@ -1,162 +1,182 @@
-import fs from "fs/promises";
-import path from "path";
 import type { Listing, ContactRecord, UserProfile, ReportRecord } from "../types/index.ts";
 import { SEED_LISTINGS } from "../data/seed.ts";
+import { getSupabaseServerClient, isSupabaseServerConfigured } from "./supabase-server.ts";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const LISTINGS_FILE = path.join(DATA_DIR, "listings.json");
-const CONTACTS_FILE = path.join(DATA_DIR, "contacts.json");
-const USERS_FILE = path.join(DATA_DIR, "users.json");
-const REPORTS_FILE = path.join(DATA_DIR, "reports.json");
+export interface BlockRecord {
+  id: string;
+  blockerEmail: string;
+  blockedEmail: string;
+  createdAt: string;
+}
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+export interface ExportedData {
+  exportedAt: string;
+  profile: UserProfile | null;
+  listings: Listing[];
+  contactHistory: ContactRecord[];
+}
 
-// Memory cache for zero-downtime read-only fallback when DB is unreachable
-let cachedListings: Listing[] = [...SEED_LISTINGS];
-let isDatabaseDown = false;
+export function maskEmail(email: string): string {
+  if (!email || !email.includes("@")) return "••••@gmail.com";
+  const [local, domain] = email.split("@");
+  if (local.length <= 2) return `${local}•••@${domain}`;
+  return `${local.slice(0, 2)}••••${local.slice(-1)}@${domain}`;
+}
+
+// In-memory runtime store used ONLY when Supabase credentials are not configured (unit tests / local dev fallback)
+// ZERO disk writes, ZERO JSON files, ZERO file system locks.
+let inMemoryListings: Listing[] = [...SEED_LISTINGS];
+let inMemoryContacts: ContactRecord[] = [];
+let inMemoryUsers: UserProfile[] = [];
+let inMemoryReports: ReportRecord[] = [];
+let inMemoryBlocks: BlockRecord[] = [];
+const inMemoryAiUsage = new Map<string, { count: number; resetAt: number }>();
 
 export function isDbFallbackActive(): boolean {
-  return isDatabaseDown;
+  return !isSupabaseServerConfigured();
 }
 
-async function ensureLocalDb(): Promise<void> {
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-
-    try {
-      await fs.access(LISTINGS_FILE);
-    } catch {
-      await fs.writeFile(LISTINGS_FILE, JSON.stringify(SEED_LISTINGS, null, 2), "utf-8");
-    }
-
-    try {
-      await fs.access(CONTACTS_FILE);
-    } catch {
-      await fs.writeFile(CONTACTS_FILE, JSON.stringify([], null, 2), "utf-8");
-    }
-
-    try {
-      await fs.access(USERS_FILE);
-    } catch {
-      await fs.writeFile(USERS_FILE, JSON.stringify([], null, 2), "utf-8");
-    }
-
-    try {
-      await fs.access(REPORTS_FILE);
-    } catch {
-      await fs.writeFile(REPORTS_FILE, JSON.stringify([], null, 2), "utf-8");
-    }
-  } catch (err: unknown) {
-    console.error("Local DB initialization fallback:", err);
-  }
+/**
+ * Reset in-memory database store (useful for clean unit testing)
+ */
+export function resetInMemoryStore(): void {
+  inMemoryListings = [...SEED_LISTINGS];
+  inMemoryContacts = [];
+  inMemoryUsers = [];
+  inMemoryReports = [];
+  inMemoryBlocks = [];
+  inMemoryAiUsage.clear();
 }
 
-// Supabase PostgREST Client Helper
-async function supabaseRequest<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<{ data: T | null; error: Error | null }> {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return { data: null, error: new Error("Supabase credentials not configured") };
-  }
-
-  const url = `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/${endpoint}`;
-  const headers = {
-    apikey: SUPABASE_KEY,
-    Authorization: `Bearer ${SUPABASE_KEY}`,
-    "Content-Type": "application/json",
-    Prefer: "return=representation",
-    ...options.headers,
+// Helper to map Supabase snake_case rows to camelCase Listing interface
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToListing(row: any, authenticated: boolean = false): Listing {
+  const email = authenticated ? row.owner_email : maskEmail(row.owner_email);
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    ownerName: row.owner_name,
+    ownerEmail: email,
+    ownerCollege: row.owner_college || "Independent",
+    ownerRole: row.owner_role || "Developer",
+    ownerPhoto: row.owner_photo || undefined,
+    type: row.type,
+    title: row.title,
+    event: row.event,
+    deadline: row.deadline || "Upcoming",
+    skillsNeeded: row.skills_needed || [],
+    slots: row.slots,
+    totalSlots: row.total_slots,
+    description: row.description,
+    status: row.status,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
   };
-
-  try {
-    const res = await fetch(url, { ...options, headers });
-    if (!res.ok) {
-      const errText = await res.text();
-      return { data: null, error: new Error(`Supabase error ${res.status}: ${errText}`) };
-    }
-    const data = (await res.json()) as T;
-    return { data, error: null };
-  } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    return { data: null, error };
-  }
 }
 
-/* ================= LISTINGS ================= */
+/* ==============================================================================
+   LISTINGS
+   ============================================================================== */
 
-export async function getListings(authenticated: boolean = false): Promise<Listing[]> {
-  const now = new Date();
+export async function getListings(
+  authenticated: boolean = false,
+  viewerIdOrEmail?: string
+): Promise<Listing[]> {
+  const viewerEmail = viewerIdOrEmail?.includes("@") ? viewerIdOrEmail.toLowerCase().trim() : undefined;
+  const viewerId = viewerIdOrEmail && !viewerIdOrEmail.includes("@") ? viewerIdOrEmail : undefined;
 
-  // Try Supabase if configured
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    const { data, error } = await supabaseRequest<Listing[]>("listings?order=created_at.desc");
-    if (!error && data) {
-      isDatabaseDown = false;
-      cachedListings = data;
-      const processed = data.map((l) => {
-        if (l.status === "open" && new Date(l.expiresAt) < now) {
-          return { ...l, status: "expired" as const };
-        }
-        return l;
-      });
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    // When unauthenticated, query safe public_listings view that masks emails in PostgreSQL
+    const tableName = authenticated ? "listings" : "public_listings";
+    const { data, error } = await supabase
+      .from(tableName)
+      .select("*")
+      .neq("status", "hidden")
+      .order("created_at", { ascending: false });
 
-      const visible = processed.filter((l) => l.status !== "hidden");
-      if (authenticated) return visible;
-
-      return visible.map((l) => ({
-        ...l,
-        ownerEmail: maskEmail(l.ownerEmail),
-      }));
-    } else {
-      isDatabaseDown = true;
+    if (error) {
+      console.error("Supabase getListings error:", error.message);
+      throw new Error(`Database error: ${error.message}`);
     }
-  }
 
-  // Fallback to local storage
-  await ensureLocalDb();
-  try {
-    const raw = await fs.readFile(LISTINGS_FILE, "utf-8");
-    const data: Listing[] = JSON.parse(raw);
+    const now = new Date();
+    let rows = data || [];
 
-    const processed = data.map((l) => {
-      if (l.status === "open" && new Date(l.expiresAt) < now) {
-        return { ...l, status: "expired" as const };
+    if (viewerEmail) {
+      const blocked = await getBlockedUsers(viewerEmail);
+      if (blocked.length > 0) {
+        rows = rows.filter((r) => !blocked.includes(r.owner_email?.toLowerCase()));
       }
-      return l;
-    });
-
-    const visible = processed.filter((l) => l.status !== "hidden");
-    const sorted = visible.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    cachedListings = sorted;
-    isDatabaseDown = false;
-
-    if (authenticated) {
-      return sorted;
     }
 
-    return sorted.map((l) => ({
-      ...l,
-      ownerEmail: maskEmail(l.ownerEmail),
-    }));
-  } catch (err: unknown) {
-    console.error("Database reading error, using cached read-only fallback:", err);
-    isDatabaseDown = true;
-    if (authenticated) return cachedListings;
-    return cachedListings.map((l) => ({ ...l, ownerEmail: maskEmail(l.ownerEmail) }));
+    return rows.map((row) => {
+      let status = row.status;
+      if (status === "open" && new Date(row.expires_at) < now) {
+        status = "expired";
+      }
+      const isOwner = Boolean(
+        (viewerId && row.owner_id === viewerId) ||
+        (viewerEmail && row.owner_email?.toLowerCase() === viewerEmail)
+      );
+      return rowToListing({ ...row, status }, authenticated || isOwner);
+    });
   }
+
+  // In-memory fallback
+  const now = new Date();
+  const blockedUsers = viewerEmail
+    ? inMemoryBlocks
+        .filter((b) => b.blockerEmail.toLowerCase() === viewerEmail)
+        .map((b) => b.blockedEmail.toLowerCase())
+    : [];
+
+  return inMemoryListings
+    .filter((l) => l.status !== "hidden")
+    .filter((l) => !blockedUsers.includes(l.ownerEmail.toLowerCase()))
+    .map((l) => {
+      let status = l.status;
+      if (status === "open" && new Date(l.expiresAt) < now) {
+        status = "expired";
+      }
+      const isOwner = Boolean(
+        (viewerId && l.ownerId === viewerId) ||
+        (viewerEmail && l.ownerEmail.toLowerCase() === viewerEmail)
+      );
+      return {
+        ...l,
+        status,
+        ownerEmail: isOwner ? l.ownerEmail : maskEmail(l.ownerEmail),
+      };
+    });
 }
 
 export async function getListingById(
   id: string,
-  authenticated: boolean = false
+  authenticated: boolean = false,
+  viewerId?: string
 ): Promise<Listing | null> {
-  const listings = await getListings(authenticated);
-  return listings.find((l) => l.id === id) || null;
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("listings")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    const isOwner = Boolean(viewerId && data.owner_id === viewerId);
+    return rowToListing(data, authenticated || isOwner);
+  }
+
+  // In-memory fallback
+  const l = inMemoryListings.find((item) => item.id === id);
+  if (!l) return null;
+  const isOwner = viewerId && l.ownerId === viewerId;
+  return {
+    ...l,
+    ownerEmail: isOwner || authenticated ? l.ownerEmail : maskEmail(l.ownerEmail),
+  };
 }
 
 export async function createListing(
@@ -174,112 +194,239 @@ export async function createListing(
     createdAt: now.toISOString(),
   };
 
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    const { data: created, error } = await supabaseRequest<Listing[]>("listings", {
-      method: "POST",
-      body: JSON.stringify(newListing),
-    });
-    if (!error && created && created.length > 0) {
-      return created[0];
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data: created, error } = await supabase
+      .from("listings")
+      .insert({
+        id: newListing.id,
+        owner_id: newListing.ownerId,
+        owner_name: newListing.ownerName,
+        owner_email: newListing.ownerEmail,
+        owner_college: newListing.ownerCollege,
+        owner_role: newListing.ownerRole,
+        owner_photo: newListing.ownerPhoto || null,
+        type: newListing.type,
+        title: newListing.title,
+        event: newListing.event,
+        deadline: newListing.deadline,
+        skills_needed: newListing.skillsNeeded,
+        slots: newListing.slots,
+        total_slots: newListing.totalSlots,
+        description: newListing.description,
+        status: newListing.status,
+        expires_at: newListing.expiresAt,
+        created_at: newListing.createdAt,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase createListing error:", error.message);
+      throw new Error(`Database error: ${error.message}`);
     }
+
+    return rowToListing(created, true);
   }
 
-  await ensureLocalDb();
-  const raw = await fs.readFile(LISTINGS_FILE, "utf-8");
-  const listings: Listing[] = JSON.parse(raw);
-  listings.unshift(newListing);
-  await fs.writeFile(LISTINGS_FILE, JSON.stringify(listings, null, 2), "utf-8");
+  inMemoryListings.unshift(newListing);
   return newListing;
 }
 
 export async function updateListingStatus(
   id: string,
-  ownerEmail: string,
+  ownerIdOrEmail: string,
   status: "open" | "filled" | "renew"
 ): Promise<{ success: boolean; listing?: Listing; error?: string }> {
-  await ensureLocalDb();
-  const raw = await fs.readFile(LISTINGS_FILE, "utf-8");
-  const listings: Listing[] = JSON.parse(raw);
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data: current, error: fetchErr } = await supabase
+      .from("listings")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
 
-  const index = listings.findIndex((l) => l.id === id);
+    if (fetchErr || !current) {
+      return { success: false, error: "Listing not found" };
+    }
+
+    const isOwner =
+      current.owner_id === ownerIdOrEmail ||
+      current.owner_email.toLowerCase() === ownerIdOrEmail.toLowerCase();
+
+    if (!isOwner) {
+      return { success: false, error: "Only the verified creator can update this listing" };
+    }
+
+    const updates: Record<string, unknown> = {
+      status: status === "renew" ? "open" : status,
+    };
+    if (status === "renew") {
+      updates.expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    }
+
+    const { data: updated, error: updateErr } = await supabase
+      .from("listings")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (updateErr) {
+      return { success: false, error: updateErr.message };
+    }
+
+    return { success: true, listing: rowToListing(updated, true) };
+  }
+
+  // In-memory fallback
+  const index = inMemoryListings.findIndex((l) => l.id === id);
   if (index === -1) {
     return { success: false, error: "Listing not found" };
   }
 
-  // Strict IDOR Protection: only verified creator can update
-  if (listings[index].ownerEmail.toLowerCase() !== ownerEmail.toLowerCase()) {
+  const isOwner =
+    inMemoryListings[index].ownerId === ownerIdOrEmail ||
+    inMemoryListings[index].ownerEmail.toLowerCase() === ownerIdOrEmail.toLowerCase();
+
+  if (!isOwner) {
     return { success: false, error: "Only the verified creator can update this listing" };
   }
 
   if (status === "renew") {
-    listings[index].status = "open";
-    listings[index].expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    inMemoryListings[index].status = "open";
+    inMemoryListings[index].expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   } else {
-    listings[index].status = status;
+    inMemoryListings[index].status = status;
   }
 
-  await fs.writeFile(LISTINGS_FILE, JSON.stringify(listings, null, 2), "utf-8");
-
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    await supabaseRequest(`listings?id=eq.${id}&owner_email=eq.${encodeURIComponent(ownerEmail)}`, {
-      method: "PATCH",
-      body: JSON.stringify(listings[index]),
-    });
-  }
-
-  return { success: true, listing: listings[index] };
+  return { success: true, listing: inMemoryListings[index] };
 }
 
 export async function deleteListing(
   id: string,
-  ownerEmail: string
+  ownerIdOrEmail: string
 ): Promise<{ success: boolean; error?: string }> {
-  await ensureLocalDb();
-  const raw = await fs.readFile(LISTINGS_FILE, "utf-8");
-  const listings: Listing[] = JSON.parse(raw);
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data: current, error: fetchErr } = await supabase
+      .from("listings")
+      .select("owner_id, owner_email")
+      .eq("id", id)
+      .maybeSingle();
 
-  const index = listings.findIndex((l) => l.id === id);
+    if (fetchErr || !current) {
+      return { success: false, error: "Listing not found" };
+    }
+
+    const isOwner =
+      current.owner_id === ownerIdOrEmail ||
+      current.owner_email.toLowerCase() === ownerIdOrEmail.toLowerCase();
+
+    if (!isOwner) {
+      return { success: false, error: "Only the verified creator can delete this listing" };
+    }
+
+    const { error: delErr } = await supabase.from("listings").delete().eq("id", id);
+    if (delErr) {
+      return { success: false, error: delErr.message };
+    }
+
+    return { success: true };
+  }
+
+  // In-memory fallback
+  const index = inMemoryListings.findIndex((l) => l.id === id);
   if (index === -1) {
     return { success: false, error: "Listing not found" };
   }
 
-  // Strict IDOR Protection: only verified creator can delete
-  if (listings[index].ownerEmail.toLowerCase() !== ownerEmail.toLowerCase()) {
+  const isOwner =
+    inMemoryListings[index].ownerId === ownerIdOrEmail ||
+    inMemoryListings[index].ownerEmail.toLowerCase() === ownerIdOrEmail.toLowerCase();
+
+  if (!isOwner) {
     return { success: false, error: "Only the verified creator can delete this listing" };
   }
 
-  listings.splice(index, 1);
-  await fs.writeFile(LISTINGS_FILE, JSON.stringify(listings, null, 2), "utf-8");
-
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    await supabaseRequest(`listings?id=eq.${id}&owner_email=eq.${encodeURIComponent(ownerEmail)}`, {
-      method: "DELETE",
-    });
-  }
-
+  inMemoryListings.splice(index, 1);
   return { success: true };
 }
 
-/* ================= CONTACTS & 10/DAY RATE LIMITING ================= */
+/* ==============================================================================
+   CONTACTS & RATE-LIMITING
+   ============================================================================== */
 
 export async function recordContact(
   fromUserEmail: string,
   listingId: string
-): Promise<{ success: boolean; error?: string; remainingToday?: number }> {
-  await ensureLocalDb();
-  const raw = await fs.readFile(CONTACTS_FILE, "utf-8");
-  const contacts: ContactRecord[] = JSON.parse(raw);
+): Promise<{
+  success: boolean;
+  error?: string;
+  remainingToday?: number;
+  contactId?: string;
+  recipientEmail?: string;
+  recipientName?: string;
+  event?: string;
+  title?: string;
+}> {
+  const email = fromUserEmail.toLowerCase().trim();
 
-  const now = new Date();
-  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    // Execute PostgreSQL atomic stored procedure with row-level transaction lock
+    const { data, error } = await supabase.rpc("record_contact_rate_limited", {
+      p_from_user_email: email,
+      p_listing_id: listingId,
+    });
 
-  const contactsInLast24h = contacts.filter(
-    (c) =>
-      c.fromUserEmail.toLowerCase() === fromUserEmail.toLowerCase() &&
-      new Date(c.createdAt) > oneDayAgo
+    if (error) {
+      console.error("Supabase recordContact RPC error:", error.message);
+      return { success: false, error: error.message };
+    }
+
+    return data as {
+      success: boolean;
+      error?: string;
+      remainingToday?: number;
+      contactId?: string;
+      recipientEmail?: string;
+      recipientName?: string;
+      event?: string;
+      title?: string;
+    };
+  }
+
+  // In-memory fallback with atomic verification
+  const listing = inMemoryListings.find((l) => l.id === listingId);
+  if (!listing) {
+    return { success: false, error: "Listing not found" };
+  }
+
+  if (listing.status === "filled") {
+    return { success: false, error: "This requisition has already been filled." };
+  }
+
+  if (listing.status === "expired" || new Date(listing.expiresAt) < new Date()) {
+    return { success: false, error: "This requisition has expired." };
+  }
+
+  // Check UGC Block
+  const isBlocked = inMemoryBlocks.some(
+    (b) =>
+      (b.blockerEmail.toLowerCase() === email && b.blockedEmail.toLowerCase() === listing.ownerEmail.toLowerCase()) ||
+      (b.blockerEmail.toLowerCase() === listing.ownerEmail.toLowerCase() && b.blockedEmail.toLowerCase() === email)
+  );
+  if (isBlocked) {
+    return { success: false, error: "You cannot contact this user." };
+  }
+
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const recentContacts = inMemoryContacts.filter(
+    (c) => c.fromUserEmail.toLowerCase() === email && c.createdAt >= oneDayAgo
   );
 
-  if (contactsInLast24h.length >= 10) {
+  if (recentContacts.length >= 10) {
     return {
       success: false,
       error: "Daily outreach limit reached (10/day). This protects creators from mass inquiries.",
@@ -287,147 +434,388 @@ export async function recordContact(
     };
   }
 
-  const record: ContactRecord = {
+  const contactRecord: ContactRecord = {
     id: `cnt-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
-    fromUserEmail,
+    fromUserEmail: email,
     listingId,
-    createdAt: now.toISOString(),
+    createdAt: new Date().toISOString(),
   };
 
-  contacts.push(record);
-  await fs.writeFile(CONTACTS_FILE, JSON.stringify(contacts, null, 2), "utf-8");
-
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    await supabaseRequest("contacts", {
-      method: "POST",
-      body: JSON.stringify(record),
-    });
-  }
+  inMemoryContacts.push(contactRecord);
 
   return {
     success: true,
-    remainingToday: 9 - contactsInLast24h.length,
+    remainingToday: 9 - recentContacts.length,
+    contactId: contactRecord.id,
+    recipientEmail: listing.ownerEmail,
+    recipientName: listing.ownerName,
+    event: listing.event,
+    title: listing.title,
   };
 }
 
-export async function getContactedListings(fromUserEmail: string): Promise<Listing[]> {
-  await ensureLocalDb();
-  try {
-    const rawContacts = await fs.readFile(CONTACTS_FILE, "utf-8");
-    const contacts: ContactRecord[] = JSON.parse(rawContacts);
-    const userContactListingIds = new Set(
-      contacts
-        .filter((c) => c.fromUserEmail.toLowerCase() === fromUserEmail.toLowerCase())
-        .map((c) => c.listingId)
-    );
+export async function getContactedListings(
+  userEmail: string
+): Promise<Listing[]> {
+  const email = userEmail.toLowerCase().trim();
 
-    const rawListings = await fs.readFile(LISTINGS_FILE, "utf-8");
-    const listings: Listing[] = JSON.parse(rawListings);
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data: contacts, error: contactErr } = await supabase
+      .from("contacts")
+      .select("listing_id")
+      .eq("from_user_email", email);
 
-    return listings.filter((l) => userContactListingIds.has(l.id));
-  } catch {
-    return [];
+    if (contactErr || !contacts || contacts.length === 0) {
+      return [];
+    }
+
+    const listingIds = contacts.map((c) => c.listing_id);
+    const { data: listings, error: listErr } = await supabase
+      .from("listings")
+      .select("*")
+      .in("id", listingIds);
+
+    if (listErr || !listings) return [];
+    return listings.map((row) => rowToListing(row, true));
   }
+
+  // In-memory fallback
+  const userContactListingIds = new Set(
+    inMemoryContacts
+      .filter((c) => c.fromUserEmail.toLowerCase() === email)
+      .map((c) => c.listingId)
+  );
+
+  return inMemoryListings.filter((l) => userContactListingIds.has(l.id));
 }
 
-/* ================= USERS & GDPR/DPDP DATA PRIVACY ================= */
+/* ==============================================================================
+   USERS & PRIVACY (GDPR / DPDP)
+   ============================================================================== */
 
 export async function upsertUser(user: UserProfile): Promise<UserProfile> {
-  await ensureLocalDb();
-  const raw = await fs.readFile(USERS_FILE, "utf-8");
-  const users: UserProfile[] = JSON.parse(raw);
+  const sanitized = {
+    ...user,
+    email: user.email.toLowerCase().trim(),
+  };
 
-  const index = users.findIndex((u) => u.email.toLowerCase() === user.email.toLowerCase());
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("users")
+      .upsert(
+        {
+          id: sanitized.id,
+          name: sanitized.name,
+          email: sanitized.email,
+          photo: sanitized.photo || null,
+          role: sanitized.role,
+          college: sanitized.college,
+          skills: sanitized.skills,
+          looking_for: sanitized.lookingFor,
+          bio: sanitized.bio,
+          consent_at: sanitized.consentAt,
+          created_at: sanitized.createdAt,
+        },
+        { onConflict: "id" }
+      )
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase upsertUser error:", error.message);
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      photo: data.photo || undefined,
+      role: data.role,
+      college: data.college,
+      skills: data.skills,
+      lookingFor: data.looking_for,
+      bio: data.bio,
+      consentAt: data.consent_at,
+      createdAt: data.created_at,
+    };
+  }
+
+  const index = inMemoryUsers.findIndex((u) => u.id === sanitized.id || u.email === sanitized.email);
   if (index !== -1) {
-    users[index] = { ...users[index], ...user };
+    inMemoryUsers[index] = { ...inMemoryUsers[index], ...sanitized };
   } else {
-    users.push(user);
+    inMemoryUsers.push(sanitized);
   }
-
-  await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
-
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    await supabaseRequest("users", {
-      method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates" },
-      body: JSON.stringify(user),
-    });
-  }
-
-  return user;
+  return sanitized;
 }
 
-export async function deleteUserData(userEmail: string): Promise<boolean> {
-  await ensureLocalDb();
-  const email = userEmail.toLowerCase();
+export async function getUserProfile(userId: string, userEmail?: string): Promise<UserProfile | null> {
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const query = supabase.from("users").select("*");
+    if (userId) query.eq("id", userId);
+    else if (userEmail) query.eq("email", userEmail.toLowerCase().trim());
 
-  // 1. Remove user profile
-  const rawUsers = await fs.readFile(USERS_FILE, "utf-8");
-  const users: UserProfile[] = JSON.parse(rawUsers);
-  const filteredUsers = users.filter((u) => u.email.toLowerCase() !== email);
-  await fs.writeFile(USERS_FILE, JSON.stringify(filteredUsers, null, 2), "utf-8");
+    const { data, error } = await query.maybeSingle();
+    if (error || !data) return null;
 
-  // 2. Cascade delete all listings owned by user
-  const rawListings = await fs.readFile(LISTINGS_FILE, "utf-8");
-  const listings: Listing[] = JSON.parse(rawListings);
-  const remainingListings = listings.filter((l) => l.ownerEmail.toLowerCase() !== email);
-  await fs.writeFile(LISTINGS_FILE, JSON.stringify(remainingListings, null, 2), "utf-8");
-
-  // 3. Purge contact audit log for user
-  const rawContacts = await fs.readFile(CONTACTS_FILE, "utf-8");
-  const contacts: ContactRecord[] = JSON.parse(rawContacts);
-  const remainingContacts = contacts.filter((c) => c.fromUserEmail.toLowerCase() !== email);
-  await fs.writeFile(CONTACTS_FILE, JSON.stringify(remainingContacts, null, 2), "utf-8");
-
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    await supabaseRequest(`users?email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
-    await supabaseRequest(`listings?owner_email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
-    await supabaseRequest(`contacts?from_user_email=eq.${encodeURIComponent(email)}`, { method: "DELETE" });
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      photo: data.photo || undefined,
+      role: data.role,
+      college: data.college,
+      skills: data.skills,
+      lookingFor: data.looking_for,
+      bio: data.bio,
+      consentAt: data.consent_at,
+      createdAt: data.created_at,
+    };
   }
 
+  const u = inMemoryUsers.find(
+    (user) => user.id === userId || (userEmail && user.email.toLowerCase() === userEmail.toLowerCase())
+  );
+  return u || null;
+}
+
+export async function deleteUserData(userIdOrEmail: string, optionalEmail?: string): Promise<boolean> {
+  const email = (optionalEmail || (userIdOrEmail.includes("@") ? userIdOrEmail : "")).toLowerCase().trim();
+  const userId = userIdOrEmail.includes("@") ? "" : userIdOrEmail;
+
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    if (email) {
+      await supabase.rpc("delete_user_data_cascade", { p_user_email: email });
+    }
+    if (userId) {
+      await supabase.from("listings").delete().eq("owner_id", userId);
+      await supabase.from("users").delete().eq("id", userId);
+    }
+    if (email) {
+      await supabase.from("contacts").delete().eq("from_user_email", email);
+      await supabase.from("blocks").delete().or(`blocker_email.eq.${email},blocked_email.eq.${email}`);
+      await supabase.from("reports").delete().eq("reporter_email", email);
+      await supabase.from("users").delete().eq("email", email);
+    }
+    return true;
+  }
+
+  // In-memory cascade delete
+  inMemoryUsers = inMemoryUsers.filter(
+    (u) => (!userId || u.id !== userId) && (!email || u.email.toLowerCase() !== email)
+  );
+  inMemoryListings = inMemoryListings.filter(
+    (l) => (!userId || l.ownerId !== userId) && (!email || l.ownerEmail.toLowerCase() !== email)
+  );
+  if (email) {
+    inMemoryContacts = inMemoryContacts.filter((c) => c.fromUserEmail.toLowerCase() !== email);
+    inMemoryBlocks = inMemoryBlocks.filter(
+      (b) => b.blockerEmail.toLowerCase() !== email && b.blockedEmail.toLowerCase() !== email
+    );
+    inMemoryReports = inMemoryReports.filter((r) => r.reporterEmail.toLowerCase() !== email);
+  }
   return true;
 }
 
-export interface ExportedData {
-  exportedAt: string;
-  profile: UserProfile | null;
-  listings: Listing[];
-  contactHistory: ContactRecord[];
-}
+export async function exportUserData(userIdOrEmail: string, optionalEmail?: string): Promise<ExportedData> {
+  const email = (optionalEmail || (userIdOrEmail.includes("@") ? userIdOrEmail : "")).toLowerCase().trim();
+  const userId = userIdOrEmail.includes("@") ? "" : userIdOrEmail;
 
-export async function exportUserData(userEmail: string): Promise<ExportedData> {
-  await ensureLocalDb();
-  const email = userEmail.toLowerCase();
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const query = supabase.from("users").select("*");
+    if (userId) query.eq("id", userId);
+    else if (email) query.eq("email", email);
 
-  const rawUsers = await fs.readFile(USERS_FILE, "utf-8");
-  const users: UserProfile[] = JSON.parse(rawUsers);
-  const profile = users.find((u) => u.email.toLowerCase() === email) || null;
+    const [profileRes, listingsRes, contactsRes] = await Promise.all([
+      query.maybeSingle(),
+      userId
+        ? supabase.from("listings").select("*").eq("owner_id", userId)
+        : supabase.from("listings").select("*").eq("owner_email", email),
+      email
+        ? supabase.from("contacts").select("*").eq("from_user_email", email)
+        : Promise.resolve({ data: [] }),
+    ]);
 
-  const rawListings = await fs.readFile(LISTINGS_FILE, "utf-8");
-  const listings: Listing[] = JSON.parse(rawListings);
-  const userListings = listings.filter((l) => l.ownerEmail.toLowerCase() === email);
+    const profile = profileRes.data
+      ? {
+          id: profileRes.data.id,
+          name: profileRes.data.name,
+          email: profileRes.data.email,
+          photo: profileRes.data.photo || undefined,
+          role: profileRes.data.role,
+          college: profileRes.data.college,
+          skills: profileRes.data.skills,
+          lookingFor: profileRes.data.looking_for,
+          bio: profileRes.data.bio,
+          consentAt: profileRes.data.consent_at,
+          createdAt: profileRes.data.created_at,
+        }
+      : null;
 
-  const rawContacts = await fs.readFile(CONTACTS_FILE, "utf-8");
-  const contacts: ContactRecord[] = JSON.parse(rawContacts);
-  const userContacts = contacts.filter((c) => c.fromUserEmail.toLowerCase() === email);
+    const listings = (listingsRes.data || []).map((row) => rowToListing(row, true));
+    const contactRows = (contactsRes.data || []) as Array<{
+      id: string;
+      from_user_email: string;
+      listing_id: string;
+      created_at: string;
+    }>;
+    const contactHistory: ContactRecord[] = contactRows.map((row) => ({
+      id: row.id,
+      fromUserEmail: row.from_user_email,
+      listingId: row.listing_id,
+      createdAt: row.created_at,
+    }));
+
+    return {
+      exportedAt: new Date().toISOString(),
+      profile,
+      listings,
+      contactHistory,
+    };
+  }
+
+  const profile =
+    inMemoryUsers.find(
+      (u) => (userId && u.id === userId) || (email && u.email.toLowerCase() === email)
+    ) || null;
+  const listings = inMemoryListings.filter(
+    (l) => (userId && l.ownerId === userId) || (email && l.ownerEmail.toLowerCase() === email)
+  );
+  const contactHistory = inMemoryContacts.filter(
+    (c) => email && c.fromUserEmail.toLowerCase() === email
+  );
 
   return {
     exportedAt: new Date().toISOString(),
     profile,
-    listings: userListings,
-    contactHistory: userContacts,
+    listings,
+    contactHistory,
   };
 }
 
-/* ================= MODERATION & REPORTS ================= */
+/* ==============================================================================
+   BLOCKS & MODERATION REPORTS
+   ============================================================================== */
+
+export async function getBlockedUsers(userEmail: string): Promise<string[]> {
+  const email = userEmail.toLowerCase().trim();
+
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("blocks")
+      .select("blocked_email")
+      .eq("blocker_email", email);
+
+    if (error || !data) return [];
+    return data.map((b) => b.blocked_email);
+  }
+
+  return inMemoryBlocks
+    .filter((b) => b.blockerEmail.toLowerCase() === email)
+    .map((b) => b.blockedEmail.toLowerCase());
+}
+
+export async function blockUser(
+  blockerEmail: string,
+  blockedEmail: string
+): Promise<{ success: boolean; error?: string }> {
+  const blocker = blockerEmail.toLowerCase().trim();
+  const blocked = blockedEmail.toLowerCase().trim();
+
+  if (blocker === blocked) {
+    return { success: false, error: "You cannot block yourself." };
+  }
+
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase.from("blocks").upsert(
+      {
+        id: `blk-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+        blocker_email: blocker,
+        blocked_email: blocked,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "blocker_email,blocked_email" }
+    );
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  }
+
+  const exists = inMemoryBlocks.some(
+    (b) => b.blockerEmail === blocker && b.blockedEmail === blocked
+  );
+  if (!exists) {
+    inMemoryBlocks.push({
+      id: `blk-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      blockerEmail: blocker,
+      blockedEmail: blocked,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  return { success: true };
+}
+
+export async function unblockUser(
+  blockerEmail: string,
+  blockedEmail: string
+): Promise<{ success: boolean; error?: string }> {
+  const blocker = blockerEmail.toLowerCase().trim();
+  const blocked = blockedEmail.toLowerCase().trim();
+
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase
+      .from("blocks")
+      .delete()
+      .eq("blocker_email", blocker)
+      .eq("blocked_email", blocked);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  }
+
+  inMemoryBlocks = inMemoryBlocks.filter(
+    (b) => !(b.blockerEmail === blocker && b.blockedEmail === blocked)
+  );
+  return { success: true };
+}
+
+export async function isUserBlocked(userA: string, userB: string): Promise<boolean> {
+  const a = userA.toLowerCase().trim();
+  const b = userB.toLowerCase().trim();
+
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data } = await supabase
+      .from("blocks")
+      .select("id")
+      .or(`and(blocker_email.eq.${a},blocked_email.eq.${b}),and(blocker_email.eq.${b},blocked_email.eq.${a})`);
+    return Boolean(data && data.length > 0);
+  }
+
+  return inMemoryBlocks.some(
+    (item) =>
+      (item.blockerEmail.toLowerCase() === a && item.blockedEmail.toLowerCase() === b) ||
+      (item.blockerEmail.toLowerCase() === b && item.blockedEmail.toLowerCase() === a)
+  );
+}
 
 export async function createReport(
   report: Omit<ReportRecord, "id" | "status" | "createdAt">
 ): Promise<ReportRecord> {
-  await ensureLocalDb();
-  const raw = await fs.readFile(REPORTS_FILE, "utf-8");
-  const reports: ReportRecord[] = JSON.parse(raw);
-
   const newReport: ReportRecord = {
     ...report,
     id: `rep-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
@@ -435,22 +823,58 @@ export async function createReport(
     createdAt: new Date().toISOString(),
   };
 
-  reports.push(newReport);
-  await fs.writeFile(REPORTS_FILE, JSON.stringify(reports, null, 2), "utf-8");
+  if (isSupabaseServerConfigured()) {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("reports")
+      .insert({
+        id: newReport.id,
+        reporter_email: newReport.reporterEmail,
+        target_type: newReport.targetType,
+        target_id: newReport.targetId,
+        reason: newReport.reason,
+        details: newReport.details || "",
+        status: newReport.status,
+        created_at: newReport.createdAt,
+      })
+      .select()
+      .single();
 
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    await supabaseRequest("reports", {
-      method: "POST",
-      body: JSON.stringify(newReport),
-    });
+    if (error) {
+      console.error("Supabase createReport error:", error.message);
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    return {
+      id: data.id,
+      reporterEmail: data.reporter_email,
+      targetType: data.target_type,
+      targetId: data.target_id,
+      reason: data.reason,
+      details: data.details,
+      status: data.status,
+      createdAt: data.created_at,
+    };
   }
 
+  inMemoryReports.push(newReport);
   return newReport;
 }
 
-function maskEmail(email: string): string {
-  if (!email || !email.includes("@")) return "••••@gmail.com";
-  const [local, domain] = email.split("@");
-  if (local.length <= 2) return `${local}•••@${domain}`;
-  return `${local.slice(0, 2)}••••${local.slice(-1)}@${domain}`;
+export async function checkAiRateLimitDb(userEmail: string): Promise<{ allowed: boolean; remaining: number }> {
+  const email = userEmail.toLowerCase().trim();
+  const now = Date.now();
+  const record = inMemoryAiUsage.get(email);
+
+  if (!record || now > record.resetAt) {
+    inMemoryAiUsage.set(email, { count: 1, resetAt: now + 24 * 60 * 60 * 1000 });
+    return { allowed: true, remaining: 19 };
+  }
+
+  if (record.count >= 20) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  record.count++;
+  return { allowed: true, remaining: 20 - record.count };
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getListingById, updateListingStatus, deleteListing } from "@/lib/db";
+import { getListingById, updateListingStatus, deleteListing, maskEmail } from "@/lib/db";
+import { getAuthenticatedUser } from "@/lib/auth-server";
 
 export async function GET(
   request: NextRequest,
@@ -7,17 +8,24 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { searchParams } = new URL(request.url);
-    const isAuth = searchParams.get("auth") === "true";
+    const auth = await getAuthenticatedUser(request);
+    const viewerId = auth.user?.id;
 
-    const listing = await getListingById(id, isAuth);
+    const listing = await getListingById(id, false, viewerId);
     if (!listing) {
       return NextResponse.json(
         { success: false, error: "Listing not found" },
         { status: 404 }
       );
     }
-    return NextResponse.json({ success: true, data: listing });
+
+    const isOwner = Boolean(viewerId && listing.ownerId === viewerId);
+    const sanitized = {
+      ...listing,
+      ownerEmail: isOwner ? listing.ownerEmail : maskEmail(listing.ownerEmail),
+    };
+
+    return NextResponse.json({ success: true, data: sanitized });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Failed to fetch listing";
     return NextResponse.json(
@@ -32,24 +40,27 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const body = (await request.json()) as { ownerEmail?: string; status?: "open" | "filled" | "renew" };
-
-    if (!body.ownerEmail || !body.status) {
+    // 1. Authenticate caller strictly via verified session JWT
+    const auth = await getAuthenticatedUser(request);
+    if (!auth.user) {
       return NextResponse.json(
-        { success: false, error: "ownerEmail and status ('open' | 'filled' | 'renew') are required" },
-        { status: 400 }
+        { success: false, error: auth.error || "Authentication required to update listing." },
+        { status: auth.status }
       );
     }
 
-    if (!["open", "filled", "renew"].includes(body.status)) {
+    const { id } = await params;
+    const body = (await request.json()) as { status?: "open" | "filled" | "renew" };
+
+    if (!body.status || !["open", "filled", "renew"].includes(body.status)) {
       return NextResponse.json(
         { success: false, error: "Status must be 'open', 'filled', or 'renew'" },
         { status: 400 }
       );
     }
 
-    const result = await updateListingStatus(id, body.ownerEmail, body.status);
+    // 2. Ownership check strictly keyed by auth.user.id
+    const result = await updateListingStatus(id, auth.user.id, body.status);
     if (!result.success) {
       return NextResponse.json(
         { success: false, error: result.error },
@@ -59,7 +70,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      message: `Listing updated successfully`,
+      message: "Listing updated successfully",
       data: result.listing,
     });
   } catch (error: unknown) {
@@ -76,17 +87,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const body = (await request.json()) as { ownerEmail?: string };
-
-    if (!body.ownerEmail) {
+    // 1. Authenticate caller strictly via verified session JWT
+    const auth = await getAuthenticatedUser(request);
+    if (!auth.user) {
       return NextResponse.json(
-        { success: false, error: "ownerEmail is required to delete listing" },
-        { status: 401 }
+        { success: false, error: auth.error || "Authentication required to delete listing." },
+        { status: auth.status }
       );
     }
 
-    const result = await deleteListing(id, body.ownerEmail);
+    const { id } = await params;
+
+    // 2. Deletion ownership check strictly keyed by auth.user.id
+    const result = await deleteListing(id, auth.user.id);
     if (!result.success) {
       return NextResponse.json(
         { success: false, error: result.error },

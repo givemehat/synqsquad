@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ListingType } from "@/types";
 import { ArrowLeft, Plus, AlertCircle, Check, Shield } from "lucide-react";
 import { validateListingInput } from "@/lib/validations";
+import { authFetch } from "@/lib/api-client";
 
 const PRESET_SKILLS = [
   "Next.js",
@@ -96,7 +97,7 @@ export default function PostPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/listings", {
+      const res = await authFetch("/api/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

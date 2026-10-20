@@ -139,3 +139,23 @@ test("Unit: 30-Day Auto-Expiry & One-Click Renew Calculation", () => {
   const diffDays = Math.round((renewedExpiresAt.getTime() - now.getTime()) / (24 * 3600 * 1000));
   assert.equal(diffDays, 30);
 });
+
+test("Unit: UGC In-App Block Filter (Google Play UGC Safety Policy)", () => {
+  const sampleListings = [
+    { id: "1", ownerEmail: "good-dev@gmail.com", title: "SIH Team" },
+    { id: "2", ownerEmail: "bad-actor@gmail.com", title: "Spam Post" },
+    { id: "3", ownerEmail: "researcher@gmail.com", title: "NeurIPS Paper" },
+  ];
+
+  const blockedList = ["bad-actor@gmail.com"];
+
+  const filtered = sampleListings.filter(
+    (l) => !blockedList.includes(l.ownerEmail.toLowerCase())
+  );
+
+  assert.equal(filtered.length, 2);
+  assert.equal(filtered.some((l) => l.ownerEmail === "bad-actor@gmail.com"), false);
+  assert.equal(filtered[0].id, "1");
+  assert.equal(filtered[1].id, "3");
+});
+

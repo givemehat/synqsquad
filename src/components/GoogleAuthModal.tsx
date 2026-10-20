@@ -130,10 +130,10 @@ export function GoogleAuthModal() {
           <div className="space-y-4">
             <div>
               <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">
-                Connect on Gmail
+                Sign in with Google to contact people. You will talk on Gmail.
               </h3>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                SynqSquad uses verified Google accounts so collaborators can reach you on Gmail with zero spam. Your raw email address is never exposed publicly.
+                SynqSquad uses verified Google accounts so collaborators can reach you directly on Gmail with zero spam. Your raw email address is never exposed publicly.
               </p>
             </div>
 

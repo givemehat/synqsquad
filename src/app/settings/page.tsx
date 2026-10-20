@@ -2,7 +2,7 @@
 
 import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ArrowLeft, Moon, Sun, Monitor, Bell, Shield, Download, FileText, Check } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Monitor, Bell, Shield, Download, FileText, Check, UserX } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -26,7 +26,7 @@ function getPromptServerSnapshot(): boolean {
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, blockedUsers, unblockUser } = useAuth();
   const composePrompt = useSyncExternalStore(
     subscribePrompt,
     getPromptSnapshot,
@@ -216,6 +216,56 @@ export default function SettingsPage() {
               <span className="text-[var(--text-secondary)]">Manage or Delete Account</span>
               <Shield className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
             </Link>
+          </div>
+        </div>
+
+        {/* Section 4: Blocked Creators & Safety (UGC Policy) */}
+        <div className="surface-card rounded-2xl p-6 space-y-4">
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-tertiary)] flex items-center gap-1.5">
+              <UserX className="w-3.5 h-3.5 text-rose-500" />
+              <span>Blocked Creators &amp; Moderation</span>
+            </h2>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">
+              Creators you block cannot contact you, and their requisitions are hidden from your feed across all your devices.
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-[var(--border-default)]">
+            {!user ? (
+              <p className="text-xs text-[var(--text-tertiary)]">
+                Sign in to view and manage your cross-device blocked creators list.
+              </p>
+            ) : blockedUsers.length === 0 ? (
+              <p className="text-xs text-[var(--text-tertiary)] py-2">
+                No creators currently blocked. You can block any creator directly from their requisition card drawer.
+              </p>
+            ) : (
+              <div className="divide-y divide-[var(--border-subtle)]">
+                {blockedUsers.map((blockedEmail) => (
+                  <div
+                    key={blockedEmail}
+                    className="py-2.5 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <div className="w-6 h-6 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center text-[var(--text-tertiary)] shrink-0">
+                        <UserX className="w-3 h-3" />
+                      </div>
+                      <span className="font-mono text-[var(--text-primary)] truncate">
+                        {blockedEmail}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => unblockUser(blockedEmail)}
+                      className="px-2.5 py-1 rounded-lg border border-[var(--border-default)] hover:border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium text-[11px] transition-colors shrink-0 min-h-[32px]"
+                    >
+                      Unblock
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

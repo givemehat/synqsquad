@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../";
 
 :root {
   /* Editorial Light Theme */
@@ -110,3 +111,32 @@ input:focus, select:focus, textarea:focus {
     scroll-behavior: auto !important;
   }
 }
+
+/* Mobile & Trusted Web Activity (TWA) Polish */
+html, body {
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Minimum 44px touch targets on buttons & interactive links */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Safe area insets for notches, punch holes, and gesture navigation bars */
+.is-twa body,
+[data-twa="true"] body {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Hide web-only install badges or browser prompts inside TWA */
+.is-twa .browser-only,
+[data-twa="true"] .browser-only,
+.is-twa .pwa-install-banner,
+[data-twa="true"] .pwa-install-banner {
+  display: none !important;
+}
+

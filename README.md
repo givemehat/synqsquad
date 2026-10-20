@@ -28,16 +28,37 @@
 
 ## 📁 Folder Structure
 ```
-synqsquad/
+├── android/                 # Android Trusted Web Activity (TWA) project
+│   ├── app/                 # App module (compileSdk 36, targetSdk 36, minSdk 21)
+│   │   ├── build.gradle     # Android application build configuration
+│   │   └── src/main/        # AndroidManifest.xml & resource densities
+│   ├── keystores/           # Secure upload keystore (synqsquad-upload-key.jks, git-ignored)
+│   ├── app-release.aab      # Production-ready signed Android App Bundle (v1.0.0, API 36)
+│   ├── app-debug.apk        # Direct installable debug APK for emulator testing
+│   └── app-release-v2.aab   # Update verification bundle (v1.0.1, versionCode 2, API 36)
+├── store/                   # Google Play Store listing graphics and policy declarations
+│   ├── icon-512.png         # 512x512 32-bit hi-res app icon
+│   ├── feature-graphic.png  # 1024x500 banner feature graphic
+│   ├── screenshot-*.png     # 4 authentic phone screenshots (1080x1920)
+│   ├── listing_metadata.txt # App title, short/full descriptions, and release notes
+│   └── play_console_form_answers.md # Exact answers for Data Safety & IARC forms
+├── PLAY_STORE_GUIDE.md      # Step-by-step Play Console submission and closed-testing checklist
 ├── data/                    # Atomic JSON persistence engine
 │   ├── listings.json        # 12+ realistic hackathon & paper requisitions
 │   ├── contacts.json        # User contact outreach history & rate limits
 │   ├── users.json           # User profiles & consent records
-│   └── reports.json         # Moderation & triage reports
+│   ├── reports.json         # Moderation & triage reports
+│   └── blocks.json          # Cross-device user blocking (UGC Safety)
+├── public/
+│   ├── .well-known/
+│   │   └── assetlinks.json  # Digital Asset Links with upload & Play signing SHA-256
+│   ├── icons/               # PWA icons (192, 512, maskable 512, monochrome)
+│   └── sw.js                # App shell caching & stale-while-revalidate service worker
 ├── src/
 │   ├── app/                 # Next.js App Router
 │   │   ├── api/             # REST endpoints (listings, contact, report, user, export)
 │   │   ├── about/           # Product mission & story
+│   │   ├── account-deletion/# Public web deletion request portal (Play policy compliance)
 │   │   ├── contact/         # Support & grievance officer contact
 │   │   ├── disclaimers/     # Introduction platform liability disclaimers
 │   │   ├── faq/             # Plain-language FAQs
@@ -54,8 +75,8 @@ synqsquad/
 │   │   ├── sitemap.ts       # Dynamic XML sitemap
 │   │   ├── not-found.tsx    # Editorial 404 page
 │   │   ├── error.tsx        # Global React error boundary
-│   │   ├── globals.css      # Core design tokens & typography
-│   │   ├── layout.tsx       # Root layout with Providers
+│   │   ├── globals.css      # Core design tokens, safe areas & typography
+│   │   ├── layout.tsx       # Root layout with Providers & Viewport
 │   │   └── page.tsx         # Feed page with search, filters & drawers
 │   ├── components/          # Reusable UI components
 │   │   ├── CreateListingModal.tsx
@@ -68,10 +89,11 @@ synqsquad/
 │   │   ├── Navbar.tsx
 │   │   ├── OfflineBanner.tsx
 │   │   ├── Providers.tsx
+│   │   ├── PwaManager.tsx   # Service worker registration & TWA detection
 │   │   ├── SuggestMatchesModal.tsx
 │   │   └── UserProfileDrawer.tsx
 │   ├── context/             # React context providers
-│   │   ├── AuthContext.tsx  # Google session & contacted tracker
+│   │   ├── AuthContext.tsx  # Google session, contacted & blocked users tracker
 │   │   └── ThemeContext.tsx # Dark/Light/System theme provider
 │   ├── data/
 │   │   └── seed.ts          # 12 realistic seed listings (SIH, NeurIPS, ETHGlobal)
@@ -82,8 +104,10 @@ synqsquad/
 │       └── index.ts         # TypeScript schema definitions
 ├── tests/
 │   ├── api-e2e.mjs          # Network integration tests
-│   └── unit-tests.mjs       # Core unit & security test suite
-├── next.config.ts           # Security headers (CSP, nosniff, DENY)
+│   ├── integration.test.mjs # In-process node integration tests
+│   ├── unit.test.mjs        # Core unit & security test suite
+│   └── unit-tests.mjs       # Supabase & strip-types test suite
+├── next.config.ts           # Security headers, CSP & assetlinks Content-Type
 ├── package.json             # Scripts & dependencies
 └── tsconfig.json            # Strict TypeScript configuration
 ```
@@ -102,11 +126,29 @@ Copy `.env.example` to `.env.local`:
 ```bash
 cp .env.example .env.local
 ```
-Configure your Google OAuth credentials in `.env.local`:
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Google OAuth 2.0 Client ID (from Google Cloud Console)
-- `GOOGLE_CLIENT_SECRET`: Google OAuth Client Secret
 
-### 3. Running Locally
+### 3. Dual Supabase Architecture (Test vs. Prod)
+Create two separate projects in [Supabase](https://supabase.com):
+1. **`synqsquad-test`**: Dedicated project for live security and automated test pipelines.
+2. **`synqsquad-prod`**: Live production database.
+
+Run the SQL migration [`supabase/migrations/20261020000000_init_synqsquad.sql`](./supabase/migrations/20261020000000_init_synqsquad.sql) in both projects.
+
+Configure your `.env.local` (untracked):
+- `NEXT_PUBLIC_APP_URL`: Your web application URL (`http://localhost:3000` or production domain)
+- `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase Project URL (`https://your-project.supabase.co`)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase Public Anonymous Key
+- `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase Secret Service Role Key (server-only)
+- `ANTHROPIC_API_KEY`: *(Optional)* Anthropic API Key for AI message improvement
+- `ANTHROPIC_MODEL`: Model name (defaults to `claude-haiku-5-5`)
+
+### 4. Single Auth Path: Supabase Auth (Google Provider)
+All Google authentication is handled natively through Supabase Auth:
+1. In Google Cloud Console, configure OAuth Client ID (Web Application) with redirect URI: `https://<your-supabase-project-id>.supabase.co/auth/v1/callback`.
+2. In Supabase Dashboard, navigate to **Auth > Providers > Google**, enable it, and enter your Google Client ID and Secret.
+3. The Next.js application never touches or logs `GOOGLE_CLIENT_SECRET`. Server-side identity is strictly verified from Supabase JWT session tokens (`supabase.auth.getUser(token)`).
+
+### 5. Running Locally
 ```bash
 # Start development server
 npm run dev
@@ -123,11 +165,20 @@ Open **`http://localhost:3000`** in your browser.
 
 Run the automated test suites:
 ```bash
-# Core unit & security test suite (25/25 tests passing)
-node --experimental-strip-types tests/unit-tests.mjs
+# Full security, auth, unit, and integration test suite (84/84 tests passing)
+npm test
 
-# Linter and type-checker (0 errors, 0 warnings)
+# End-to-end API verification suite (requires server running on port 3000)
+npm run test:e2e
+
+# TypeScript typecheck (0 errors)
+npx tsc --noEmit
+
+# Next.js linter (0 errors, 0 warnings)
 npm run lint
+
+# Production build test
+npm run build
 ```
 
 ---

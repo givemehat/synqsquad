@@ -5,6 +5,7 @@ import { Listing, ListingType } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { X, AlertCircle } from "lucide-react";
 import { validateListingInput } from "@/lib/validations";
+import { authFetch } from "@/lib/api-client";
 
 interface CreateListingModalProps {
   isOpen: boolean;
@@ -99,7 +100,7 @@ export function CreateListingModal({
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/listings", {
+      const res = await authFetch("/api/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
