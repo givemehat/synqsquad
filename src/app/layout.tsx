@@ -47,14 +47,14 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://synqsquad.vercel.app",
     siteName: "SynqSquad",
-    images: [{ url: "/icon.png", width: 512, height: 512, alt: "SynqSquad Logo" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "SynqSquad Logo" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "SynqSquad | Find Hackathon Teammates & Research Co-Authors",
     description:
       "Two-way discovery for hackathons and research. Verified Google accounts, talk directly on Gmail.",
-    images: ["/icon.png"],
+    images: ["/og-image.png"],
   },
   verification: {
     google: "google61d96b399c5e87d8",

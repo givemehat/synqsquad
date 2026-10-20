@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { validateListingInput, detectSpam } from "../src/lib/validations.ts";
 
 test("Unit: Spam and external chat detection", () => {
@@ -157,5 +158,20 @@ test("Unit: UGC In-App Block Filter (Google Play UGC Safety Policy)", () => {
   assert.equal(filtered.some((l) => l.ownerEmail === "bad-actor@gmail.com"), false);
   assert.equal(filtered[0].id, "1");
   assert.equal(filtered[1].id, "3");
+});
+
+test("Unit: Brand String & Package Alignment (SynqSquad)", () => {
+  // Validate package name
+  const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
+  assert.equal(pkg.name, "synqsquad");
+
+  // Validate Manifest
+  const manifest = JSON.parse(readFileSync("public/manifest.json", "utf-8"));
+  assert.equal(manifest.name, "SynqSquad — Match & Connect on Gmail");
+  assert.equal(manifest.short_name, "SynqSquad");
+
+  // Validate Assetlinks package name
+  const assetlinks = JSON.parse(readFileSync("public/.well-known/assetlinks.json", "utf-8"));
+  assert.equal(assetlinks[0].target.package_name, "com.synqsquad.app");
 });
 

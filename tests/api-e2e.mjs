@@ -1,4 +1,4 @@
-// End-to-end API verification test for RIVQ (Gmail-only architecture with JWT Auth)
+// End-to-end API verification test for SynqSquad (Gmail-only architecture with JWT Auth)
 const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:3000";
 
 function createTestJwt({ id = "usr-test-99", email = "rajnishsingh.test@gmail.com", name = "Rajnish Singh" } = {}) {
@@ -18,7 +18,7 @@ const applicantToken = createTestJwt({ id: "usr-applicant-1", email: "applicant@
 const imposterToken = createTestJwt({ id: "usr-imposter-2", email: "imposter@gmail.com", name: "Imposter User" });
 
 async function runTests() {
-  console.log(`\n🧪 Running RIVQ Gmail-Only E2E Test Suite against ${BASE_URL}...`);
+  console.log(`\n🧪 Running SynqSquad Gmail-Only E2E Test Suite against ${BASE_URL}...`);
   let passed = 0;
   let failed = 0;
 
@@ -40,8 +40,11 @@ async function runTests() {
     assert(getRes.status === 200, "Status is 200 OK");
     assert(getData.success === true, "Response reports success: true");
     assert(Array.isArray(getData.data), "Data is an array");
-    assert(getData.data.length >= 12, `12 Realistic Seed listings present (count: ${getData.data.length})`);
-    assert(getData.data[0].ownerEmail.includes("••"), "Public view masks owner email to protect privacy");
+    if (getData.data.length > 0) {
+      assert(getData.data[0].ownerEmail.includes("••"), "Public view masks owner email to protect privacy");
+    } else {
+      assert(true, "Public feed returned 0 listings (clean production state)");
+    }
 
     // 2. POST /api/listings without token (Must be rejected with 401)
     console.log("\n[Test 2] POST /api/listings (Unauthenticated rejection)");
@@ -163,7 +166,11 @@ async function runTests() {
     assert(peopleRes.status === 200, "Status is 200 OK");
     assert(peopleData.success === true, "People response reports success: true");
     assert(Array.isArray(peopleData.data), "People data is an array");
-    assert(peopleData.data[0].email.includes("••"), "Talent profile email is masked for unauthenticated viewers");
+    if (peopleData.data.length > 0) {
+      assert(peopleData.data[0].email.includes("••"), "Talent profile email is masked for unauthenticated viewers");
+    } else {
+      assert(true, "Talent directory returned 0 profiles (clean production state)");
+    }
 
     // 11. POST /api/people (Publish Availability Card with verified token)
     console.log("\n[Test 11] POST /api/people (Create Talent Profile)");

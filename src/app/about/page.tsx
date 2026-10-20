@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ArrowLeft, Shield } from "lucide-react";
 
 export const metadata = {
-  title: "About | RIVQ",
-  description: "The origin and mission behind RIVQ: direct collaborator matching on verified Gmail.",
+  title: "About | SynqSquad",
+  description: "The origin and mission behind SynqSquad: direct collaborator matching on verified Gmail.",
 };
 
 export default function AboutPage() {
@@ -21,11 +21,11 @@ export default function AboutPage() {
 
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-black shadow-sm shrink-0">
-            <img src="/logo.png" alt="RIVQ" className="w-full h-full object-cover" />
+            <img src="/logo.png" alt="SynqSquad" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] mb-1">
-              About RIVQ
+              About SynqSquad
             </h1>
             <p className="text-xs text-[var(--text-secondary)]">
               Built by engineers and researchers frustrated with broken team discovery channels.
@@ -43,7 +43,7 @@ export default function AboutPage() {
           </p>
 
           <p>
-            <strong>RIVQ takes the opposite approach:</strong> We act as an ultra-clean, verified introduction directory. You find the exact profile you need in under 30 seconds, click &quot;Connect on Gmail&quot;, and conversation flows into your native, searchable email inbox.
+            <strong>SynqSquad takes the opposite approach:</strong> We act as an ultra-clean, verified introduction directory. You find the exact profile you need in under 30 seconds, click &quot;Connect on Gmail&quot;, and conversation flows into your native, searchable email inbox.
           </p>
 
           <div className="p-5 rounded-2xl surface-card space-y-2">

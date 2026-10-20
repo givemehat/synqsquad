@@ -89,7 +89,7 @@ export default function ReportPage() {
             </div>
             <h3 className="text-sm font-bold text-[var(--text-primary)]">Report Received</h3>
             <p className="text-xs text-[var(--text-secondary)]">
-              Thank you for keeping RIVQ safe. We have logged this report for immediate administrative review.
+              Thank you for keeping SynqSquad safe. We have logged this report for immediate administrative review.
             </p>
             <div className="pt-2">
               <Link

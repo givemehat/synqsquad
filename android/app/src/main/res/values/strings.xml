@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RIVQ</string>
-    <string name="package_name">com.synqsquad.app</string>
+    <string name="package_name">com.rivq.app</string>
     <string name="host_name">synqsquad.vercel.app</string>
     <string name="default_web_url">https://synqsquad.vercel.app/?utm_source=twa</string>
     

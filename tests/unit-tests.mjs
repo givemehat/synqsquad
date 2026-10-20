@@ -1,4 +1,4 @@
-// Unit and Security tests for RIVQ
+// Unit and Security tests for SynqSquad
 // Validates Supabase RLS logic, ownership rules, email privacy masking, and rate limits
 
 import { validateListingInput, detectSpam, sanitizeText } from "../src/lib/validations.ts";
@@ -27,7 +27,7 @@ function assert(condition, message) {
 }
 
 async function runAllTests() {
-  console.log("\n🧪 Running RIVQ Supabase & Security Unit Tests...");
+  console.log("\n🧪 Running SynqSquad Supabase & Security Unit Tests...");
 
   // 1. Sanitization & XSS
   console.log("\n[Test 1] Input Sanitization & Anti-XSS");
@@ -59,8 +59,8 @@ async function runAllTests() {
 
   // Test authenticated feed returns verified emails
   const authListings = await getListings(true);
-  const allUnmasked = authListings.every((l) => l.ownerEmail.includes("@gmail.com") && !l.ownerEmail.includes("••"));
-  assert(allUnmasked, "Authenticated users receive verified Gmail addresses for direct outreach");
+  const allUnmasked = authListings.every((l) => (l.ownerEmail.includes("@gmail.com") || l.ownerEmail.includes("@example.com")) && !l.ownerEmail.includes("••"));
+  assert(allUnmasked, "Authenticated users receive verified email addresses for direct outreach");
 
   // 4. Ownership & Authorization (User A cannot edit/delete User B's listing)
   console.log("\n[Test 4] RLS Ownership Protection: User A vs User B");

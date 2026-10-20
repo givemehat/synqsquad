@@ -74,7 +74,7 @@ export default function ProfilePage() {
             Sign-in Required
           </h2>
           <p className="text-xs text-[var(--text-secondary)]">
-            Please sign in with your Google account to access your RIVQ profile, listings, and privacy controls.
+            Please sign in with your Google account to access your SynqSquad profile, listings, and privacy controls.
           </p>
           <Link
             href="/"
@@ -191,7 +191,7 @@ export default function ProfilePage() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `rivq-data-${Date.now()}.json`;
+        a.download = `synqsquad-data-${Date.now()}.json`;
         document.body.appendChild(a);
         a.click();
         a.remove();

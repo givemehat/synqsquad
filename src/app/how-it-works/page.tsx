@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 export const metadata = {
-  title: "How It Works | RIVQ",
+  title: "How It Works | SynqSquad",
   description: "Find your hackathon or research partner and connect directly on Gmail in 3 simple steps.",
 };
 
@@ -21,7 +21,7 @@ export default function HowItWorksPage() {
 
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] mb-2">
-            How RIVQ Works
+            How SynqSquad Works
           </h1>
           <p className="text-xs text-[var(--text-secondary)]">
             Zero chat inboxes. Zero spam. One-click introduction directly in your native Gmail.

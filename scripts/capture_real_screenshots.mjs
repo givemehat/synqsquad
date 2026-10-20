@@ -126,7 +126,7 @@ async function main() {
       source: `
         try {
           localStorage.setItem('synqsquad_user', JSON.stringify(${JSON.stringify(SEED_USER)}));
-          localStorage.setItem('synqsquad_blocked', JSON.stringify(['toxic.spammer@gmail.com']));
+          localStorage.setItem('synqsquad_blocked', JSON.stringify(['demo.blocked.user@example.com']));
         } catch(e) {}
       `,
     });

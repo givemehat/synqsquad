@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Shield, ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Privacy Policy | RIVQ",
+  title: "Privacy Policy | SynqSquad",
   description:
-    "How RIVQ handles Google user data, DPDP Act 2023 compliance, GDPR rights, and Gmail contact privacy.",
+    "How SynqSquad handles Google user data, DPDP Act 2023 compliance, GDPR rights, and Gmail contact privacy.",
 };
 
 export default function PrivacyPolicyPage() {
@@ -36,14 +36,14 @@ export default function PrivacyPolicyPage() {
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">1. Introduction & Overview</h2>
             <p>
-              RIVQ is an introduction platform connecting students and developers for hackathons and academic research collaborations. Our core principle is privacy by default: we do not sell data, we do not host closed chat servers, and we never expose your verified email address to public web scrapers.
+              SynqSquad is an introduction platform connecting students and developers for hackathons and academic research collaborations. Our core principle is privacy by default: we do not sell data, we do not host closed chat servers, and we never expose your verified email address to public web scrapers.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">2. Google API Services & Limited Use Disclosure</h2>
             <p>
-              RIVQ’s use and transfer to any other app of information received from Google APIs will adhere to the{" "}
+              SynqSquad’s use and transfer to any other app of information received from Google APIs will adhere to the{" "}
               <a
                 href="https://developers.google.com/terms/api-services-user-data-policy"
                 target="_blank"
@@ -66,6 +66,7 @@ export default function PrivacyPolicyPage() {
               <li><strong>Collaborator Details & Talent Profiles:</strong> Your selected role, university, top skills, headline, bio, and optional portfolio links (GitHub, LinkedIn) published in the Talent Directory.</li>
               <li><strong>Requisitions:</strong> Project titles, competition names, deadlines, and technical descriptions you publish.</li>
               <li><strong>Contact & Outreach Audit Log:</strong> Timestamps of &quot;Connect on Gmail&quot; and collaboration outreaches to enforce our 10-connects/day anti-spam threshold.</li>
+              <li><strong>Safety & Moderation Logs:</strong> Reports of inappropriate content and user blocklists stored to enforce our zero-tolerance UGC harassment policy.</li>
             </ul>
           </section>
 
@@ -95,7 +96,7 @@ export default function PrivacyPolicyPage() {
               <br />
               <strong>Grievance Officer:</strong> Rajnish Singh
               <br />
-              <strong>Email:</strong> grievance@rivq.app
+              <strong>Email:</strong> rajnishsingh.work@gmail.com
               <br />
               <strong>Address:</strong> Gautam Buddha University, Greater Noida, UP, India
             </p>

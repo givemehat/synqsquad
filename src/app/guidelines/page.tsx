@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CheckCircle2, AlertTriangle, ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Community Guidelines & Safety Tips | RIVQ",
+  title: "Community Guidelines & Safety Tips | SynqSquad",
   description: "Best practices for meeting collaborators safely and building winning hackathon squads.",
 };
 

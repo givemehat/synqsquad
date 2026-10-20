@@ -17,7 +17,7 @@ export default function OfflinePage() {
             You Are Offline
           </h1>
           <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-            RIVQ requires an active internet connection to contact leads on Gmail and publish new requirements.
+            SynqSquad requires an active internet connection to contact leads on Gmail and publish new requirements.
           </p>
         </div>
 

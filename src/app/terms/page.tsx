@@ -3,8 +3,8 @@ import Link from "next/link";
 import { Scale, ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Terms of Service | RIVQ",
-  description: "Terms and conditions governing the use of the RIVQ matchmaking platform.",
+  title: "Terms of Service | SynqSquad",
+  description: "Terms and conditions governing the use of the SynqSquad matchmaking platform.",
 };
 
 export default function TermsOfServicePage() {
@@ -35,14 +35,14 @@ export default function TermsOfServicePage() {
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">1. Acceptance & Eligibility</h2>
             <p>
-              By accessing or using RIVQ, you agree to be bound by these Terms. You must be at least 18 years of age, or have the valid consent of a legal parent/guardian if a collegiate student between 16 and 18 years old, to participate in hackathon and research matchmaking.
+              By accessing or using SynqSquad, you agree to be bound by these Terms. You must be at least 18 years of age, or have the valid consent of a legal parent/guardian if a collegiate student between 16 and 18 years old, to participate in hackathon and research matchmaking.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">2. Introduction Platform Only</h2>
             <p>
-              RIVQ provides a technical directory allowing users to discover collaborators and initiate email conversations. RIVQ is <strong>not</strong> an employer, agent, tournament organizer, or academic co-author. We do not independently verify past competition wins, academic credentials, or individual claims.
+              SynqSquad provides a technical directory allowing users to discover collaborators and initiate email conversations. SynqSquad is <strong>not</strong> an employer, agent, tournament organizer, or academic co-author. We do not independently verify past competition wins, academic credentials, or individual claims.
             </p>
           </section>
 
@@ -67,14 +67,14 @@ export default function TermsOfServicePage() {
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">5. Content Ownership & Deletion</h2>
             <p>
-              You retain full ownership of all project abstracts and descriptions you publish on RIVQ. By posting, you grant RIVQ a non-exclusive license to display the content on our public discovery board. You may edit, mark filled, or permanently delete your listings at any time.
+              You retain full ownership of all project abstracts and descriptions you publish on SynqSquad. By posting, you grant SynqSquad a non-exclusive license to display the content on our public discovery board. You may edit, mark filled, or permanently delete your listings at any time.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">6. Limitation of Liability</h2>
             <p>
-              To the fullest extent permitted by Indian law, RIVQ and its developers shall not be liable for any direct, indirect, incidental, or consequential damages arising from agreements, code contributions, intellectual property disputes, or interactions between users introduced through the platform.
+              To the fullest extent permitted by Indian law, SynqSquad and its developers shall not be liable for any direct, indirect, incidental, or consequential damages arising from agreements, code contributions, intellectual property disputes, or interactions between users introduced through the platform.
             </p>
           </section>
 

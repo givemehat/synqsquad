@@ -63,7 +63,7 @@ export function KeyboardShortcutsModal() {
       },
       {
         id: "nav-how-it-works",
-        label: "How RIVQ Works",
+        label: "How SynqSquad Works",
         category: "Navigation",
         icon: FileText,
         action: () => router.push("/how-it-works"),

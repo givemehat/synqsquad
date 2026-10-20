@@ -186,7 +186,14 @@ export default function PeoplePage() {
           />
         )}
 
-        {screenState === "idle" && filteredProfiles.length === 0 && (
+        {screenState === "idle" && profiles.length === 0 && (
+          <StateView
+            state="empty"
+            customMessage="Be the first to create your talent profile and let project leads find and invite you directly on verified Gmail."
+          />
+        )}
+
+        {screenState === "idle" && profiles.length > 0 && filteredProfiles.length === 0 && (
           <StateView
             state="no_results"
             customMessage="No squadmates match your search. Try adjusting filters or searching for another skill."

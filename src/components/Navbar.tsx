@@ -31,12 +31,12 @@ export function Navbar({ onOpenCreate, onOpenProfile, activeTab, setActiveTab }:
             <div className="w-8 h-8 rounded-lg overflow-hidden border border-[var(--border-subtle)] shadow-sm flex items-center justify-center bg-black">
               <img
                 src="/logo.png"
-                alt="RIVQ Logo"
+                alt="SynqSquad Logo"
                 className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
               />
             </div>
             <span className="font-bold text-base tracking-tight text-[var(--text-primary)]">
-              RIVQ
+              SynqSquad
             </span>
           </Link>
 

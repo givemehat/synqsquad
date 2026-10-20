@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ArrowLeft, Mail, MapPin, ShieldCheck, Flag } from "lucide-react";
 
 export const metadata = {
-  title: "Support & Grievances | RIVQ",
-  description: "Get in touch with the RIVQ team for support, grievances, or inquiries under DPDP Act 2023.",
+  title: "Support & Grievances | SynqSquad",
+  description: "Get in touch with the SynqSquad team for support, grievances, or inquiries under DPDP Act 2023.",
 };
 
 export default function SupportPage() {
@@ -34,10 +34,10 @@ export default function SupportPage() {
             <div>
               <span className="font-semibold text-[var(--text-primary)] block">Support Inquiries</span>
               <a
-                href="mailto:support@rivq.app"
+                href="mailto:rajnishsingh.work@gmail.com"
                 className="text-[var(--accent-primary)] hover:underline font-mono"
               >
-                support@rivq.app
+                rajnishsingh.work@gmail.com
               </a>
               <span className="text-[11px] text-[var(--text-tertiary)] block mt-0.5">
                 Technical help, account assistance, or feedback.
@@ -53,10 +53,10 @@ export default function SupportPage() {
               </span>
               <span className="text-[var(--text-secondary)] block">Officer: Rajnish Singh</span>
               <a
-                href="mailto:grievance@rivq.app"
+                href="mailto:rajnishsingh.work@gmail.com"
                 className="text-[var(--accent-primary)] hover:underline font-mono"
               >
-                grievance@rivq.app
+                rajnishsingh.work@gmail.com
               </a>
               <span className="text-[11px] text-[var(--text-tertiary)] block mt-0.5">
                 Statutory redressal for privacy, consent revocation, or compliance queries.

@@ -102,7 +102,7 @@ test("Talent Profile: Public queries strictly mask emails and omit hidden profil
   // Authenticated query exposes real emails
   const authRes = await getTalentProfiles(true);
   for (const profile of authRes.profiles) {
-    assert.ok(profile.email.includes("@gmail.com"));
+    assert.ok(profile.email.includes("@example.com") || profile.email.includes("@gmail.com"));
     assert.ok(!profile.email.includes("••"));
   }
 });
@@ -114,14 +114,14 @@ test("Talent Profile: Single profile query strictly masks email for public visit
 
   const authProf = await getTalentProfileById("prf-ananya-ai-01", true);
   assert.ok(authProf);
-  assert.equal(authProf.email, "ananya.iyer.ai@gmail.com");
+  assert.equal(authProf.email, "ananya.iyer.ai@example.com");
 });
 
 // 3. Two-Way Outreach & Rate Limiting
 test("Outreach: Rejects self-outreach", async () => {
   const result = await recordOutreach(
     "usr-ananya-01",
-    "ananya.iyer.ai@gmail.com",
+    "ananya.iyer.ai@example.com",
     "Ananya Iyer",
     "usr-ananya-01",
     "prf-ananya-ai-01",
@@ -178,7 +178,7 @@ test("Outreach: 10/day shared rate limit and 50 parallel requests burst", async 
 // 4. UGC Safety & Mutual Blocking
 test("Outreach: Blocked users cannot send or receive outreach in either direction", async () => {
   const userA = "usera.collab@gmail.com";
-  const userB = "ananya.iyer.ai@gmail.com"; // prf-ananya-ai-01 owner
+  const userB = "ananya.iyer.ai@example.com"; // prf-ananya-ai-01 owner
 
   // User B blocks User A
   await blockUser(userB, userA);
@@ -239,7 +239,7 @@ test("Outreach: Recipient can accept outreach and unmask contact details", async
   assert.equal(acceptRes.success, true);
   assert.equal(acceptRes.status, "accepted");
   assert.equal(acceptRes.senderEmail, "teamlead@gmail.com");
-  assert.equal(acceptRes.recipientEmail, "ananya.iyer.ai@gmail.com");
+  assert.equal(acceptRes.recipientEmail, "ananya.iyer.ai@example.com");
 
   // Cannot accept again
   const secondAccept = await respondToOutreach("usr-ananya-01", outreachId, "accept");
@@ -249,7 +249,7 @@ test("Outreach: Recipient can accept outreach and unmask contact details", async
 
 // 6. DPDP Cascade Erasure & Data Export
 test("Compliance: Account deletion purges talent profile and outreach records", async () => {
-  const testEmail = "ananya.iyer.ai@gmail.com";
+  const testEmail = "ananya.iyer.ai@example.com";
   const testUserId = "usr-ananya-01";
 
   // Pre-check

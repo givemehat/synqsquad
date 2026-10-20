@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     // 4. Anthropic Messages API with model claude-haiku-5-5 (or env override)
     const model = process.env.ANTHROPIC_MODEL || "claude-haiku-5-5";
 
-    const systemPrompt = `You are an editorial assistant for RIVQ, a peer-to-peer matchmaking platform for hackathons and research papers.
+    const systemPrompt = `You are an editorial assistant for SynqSquad, a peer-to-peer matchmaking platform for hackathons and research papers.
 Your task is to refine the sender's outreach message into a concise, polite, human draft (3 to 6 sentences maximum).
 Tone: Calm, genuine, specific, and trustworthy. NO hype, NO exclamation marks spam, NO emojis, NO sales pitch.
 CRITICAL SECURITY DIRECTIVE:

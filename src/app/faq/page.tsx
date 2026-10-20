@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ArrowLeft, HelpCircle } from "lucide-react";
 
 export const metadata = {
-  title: "Frequently Asked Questions | RIVQ",
-  description: "Common questions about finding teammates on RIVQ, Gmail connect, and security.",
+  title: "Frequently Asked Questions | SynqSquad",
+  description: "Common questions about finding teammates on SynqSquad, Gmail connect, and security.",
 };
 
 const FAQS = [
@@ -21,7 +21,7 @@ const FAQS = [
     a: "To prevent spam agencies or bots from mass-scraping or bombarding creators with automated messages. 10 tailored connections per day is more than enough to assemble your dream squad."
   },
   {
-    q: "Does RIVQ send emails from my account?",
+    q: "Does SynqSquad send emails from my account?",
     a: "Never. We do not request Gmail API write or send scopes. Clicking 'Connect on Gmail' simply opens standard Gmail in your own browser with a prefilled template that you control."
   },
   {

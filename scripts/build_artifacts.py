@@ -73,7 +73,7 @@ def create_bundle(output_aab, version_code=1, version_name="1.0.0"):
             
     # Sign with upload keystore using jarsigner
     keystore = "android/keystores/synqsquad-upload-key.jks"
-    jarsigner = "/opt/homebrew/opt/openjdk@21/bin/jarsigner"
+    jarsigner = "/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home/bin/jarsigner"
     password = get_keystore_password()
     
     cmd = [
@@ -137,7 +137,7 @@ def create_apk(output_apk, version_code=1, version_name="1.0.0"):
             
     # Sign APK with jarsigner
     keystore = "android/keystores/synqsquad-upload-key.jks"
-    jarsigner = "/opt/homebrew/opt/openjdk@21/bin/jarsigner"
+    jarsigner = "/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home/bin/jarsigner"
     password = get_keystore_password()
     
     cmd = [
@@ -163,7 +163,7 @@ def create_apk(output_apk, version_code=1, version_name="1.0.0"):
         os.remove(temp_zip)
 
 def verify_jar(file_path):
-    jarsigner = "/opt/homebrew/opt/openjdk@21/bin/jarsigner"
+    jarsigner = "/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home/bin/jarsigner"
     cmd = [jarsigner, "-verify", "-verbose", "-certs", file_path]
     res = subprocess.run(cmd, capture_output=True, text=True)
     is_verified = "jar verified." in res.stdout
@@ -173,17 +173,13 @@ def verify_jar(file_path):
 def main():
     ensure_dir("android")
     
-    print("Building v1.1.0 Release AAB (versionCode 2)...")
-    create_bundle("android/app-release.aab", version_code=2, version_name="1.1.0")
+    print("Building v1.3.0 Release AAB (versionCode 4)...")
+    create_bundle("android/app-release.aab", version_code=4, version_name="1.3.0")
     verify_jar("android/app-release.aab")
     
     print("\nBuilding Debug APK...")
-    create_apk("android/app-debug.apk", version_code=2, version_name="1.1.0")
+    create_apk("android/app-debug.apk", version_code=4, version_name="1.3.0")
     verify_jar("android/app-debug.apk")
-    
-    print("\nBuilding v1.0.1 Update AAB (versionCode 2) for Update Verification...")
-    create_bundle("android/app-release-v2.aab", version_code=2, version_name="1.0.1")
-    verify_jar("android/app-release-v2.aab")
     
     print("\n✓ All Android binaries built and cryptographically verified.")
 

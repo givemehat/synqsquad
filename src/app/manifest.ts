@@ -2,8 +2,8 @@ import { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "RIVQ — Match & Connect on Gmail",
-    short_name: "RIVQ",
+    name: "SynqSquad — Match & Connect on Gmail",
+    short_name: "SynqSquad",
     description:
       "Find complementary hackathon teammates and research paper collaborators. Verified Google accounts only, direct peer-to-peer contact on Gmail.",
     start_url: "/?utm_source=twa",

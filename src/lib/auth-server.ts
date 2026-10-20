@@ -64,8 +64,16 @@ export async function getAuthenticatedUser(
     };
   }
 
-  // 2. If Supabase is configured with remote URL and key, verify via Supabase Auth
-  if (isSupabaseServerConfigured()) {
+  // 2. Check for test token (used by test suites in non-production or when ALLOW_TEST_AUTH is set)
+  if (token.endsWith(".test_sig")) {
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_TEST_AUTH !== "true") {
+      return {
+        user: null,
+        error: "Authentication required. Test credentials are prohibited in production.",
+        status: 401,
+      };
+    }
+  } else if (isSupabaseServerConfigured()) {
     try {
       const supabase = getSupabaseServerClient();
       const { data, error } = await supabase.auth.getUser(token);
@@ -107,6 +115,15 @@ export async function getAuthenticatedUser(
   }
 
   // 3. Fallback for test runner / local environment without live Supabase
+  // HARDENED GUARD: Strictly prohibited in production unless ALLOW_TEST_AUTH === "true"
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_TEST_AUTH !== "true") {
+    return {
+      user: null,
+      error: "Authentication required. Test credentials are prohibited in production.",
+      status: 401,
+    };
+  }
+
   // Strictly validates test JWT format (base64url header.payload.signature)
   // Rejects malformed, expired, tampered, or deleted tokens
   try {

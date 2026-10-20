@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AlertCircle, ArrowLeft } from "lucide-react";
 
 export const metadata = {
-  title: "Platform Disclaimers | RIVQ",
+  title: "Platform Disclaimers | SynqSquad",
   description: "Important disclaimers regarding user-generated content, credentials, and tournament results.",
 };
 
@@ -35,28 +35,28 @@ export default function DisclaimersPage() {
           <section className="space-y-2 p-5 rounded-2xl surface-card">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">1. Introduction Service Only</h2>
             <p>
-              RIVQ is strictly a neutral technological intermediary designed to help students and developers introduce themselves via direct Gmail outreach. We do not act as an agency, broker, employer, or tournament administrator.
+              SynqSquad is strictly a neutral technological intermediary designed to help students and developers introduce themselves via direct Gmail outreach. We do not act as an agency, broker, employer, or tournament administrator.
             </p>
           </section>
 
           <section className="space-y-2 p-5 rounded-2xl surface-card">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">2. No Verification of External Credentials</h2>
             <p>
-              While Google OAuth verifies ownership of the associated Gmail address, RIVQ does not independently verify university affiliations, resume claims, past hackathon rankings, or academic credentials. Users are strictly responsible for conducting their own technical due diligence before entering competitions together.
+              While Google OAuth verifies ownership of the associated Gmail address, SynqSquad does not independently verify university affiliations, resume claims, past hackathon rankings, or academic credentials. Users are strictly responsible for conducting their own technical due diligence before entering competitions together.
             </p>
           </section>
 
           <section className="space-y-2 p-5 rounded-2xl surface-card">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">3. User-Generated Requisitions</h2>
             <p>
-              All project titles, competition descriptions, and role descriptions are submitted by individual users. RIVQ does not endorse, sponsor, or guarantee the legitimacy of any external hackathon, research call, or corporate grant mentioned in user postings.
+              All project titles, competition descriptions, and role descriptions are submitted by individual users. SynqSquad does not endorse, sponsor, or guarantee the legitimacy of any external hackathon, research call, or corporate grant mentioned in user postings.
             </p>
           </section>
 
           <section className="space-y-2 p-5 rounded-2xl surface-card">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">4. No Guarantee of Results or Awards</h2>
             <p>
-              Forming a team through RIVQ provides no guarantee of tournament acceptance, hackathon victory, academic peer-review acceptance, or prize distribution. All outcomes depend entirely on individual team performance.
+              Forming a team through SynqSquad provides no guarantee of tournament acceptance, hackathon victory, academic peer-review acceptance, or prize distribution. All outcomes depend entirely on individual team performance.
             </p>
           </section>
 
