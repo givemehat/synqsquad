@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerClient, isSupabaseServerConfigured } from "@/lib/supabase-server";
+import { createClient } from "@/utils/supabase/server";
+import { isSupabaseServerConfigured } from "@/lib/supabase-server";
 
 /**
  * Validates the redirect target to prevent Open Redirect attacks.
@@ -39,8 +40,8 @@ export async function GET(request: NextRequest) {
   const next = requestUrl.searchParams.get("next");
 
   if (code && isSupabaseServerConfigured()) {
-    const supabase = getSupabaseServerClient();
     try {
+      const supabase = await createClient();
       await supabase.auth.exchangeCodeForSession(code);
     } catch (err) {
       console.error("Auth callback code exchange error:", err);
