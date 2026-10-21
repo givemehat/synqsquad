@@ -29,16 +29,26 @@ for (const envFile of [".env.production", ".env.local", ".env"]) {
   }
 }
 
-const requiredProduction = [
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
-];
+// Auto-alias between NEXT_PUBLIC_SUPABASE_ANON_KEY and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+} else if (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+}
 
-const optionalProduction = [
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  "NEXT_PUBLIC_APP_URL",
-  "PLAY_APP_SIGNING_SHA256",
+const hasSupabaseUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim());
+const hasClientKey = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
+);
+const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+
+const displayStatus = [
+  { name: "NEXT_PUBLIC_SUPABASE_URL", present: hasSupabaseUrl, required: true },
+  { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY", present: hasClientKey, required: true },
+  { name: "SUPABASE_SERVICE_ROLE_KEY", present: hasServiceRoleKey, required: true },
+  { name: "NEXT_PUBLIC_APP_URL", present: Boolean(process.env.NEXT_PUBLIC_APP_URL?.trim()), required: false },
+  { name: "PLAY_APP_SIGNING_SHA256", present: Boolean(process.env.PLAY_APP_SIGNING_SHA256?.trim()), required: false },
 ];
 
 const prohibitedProduction = [
@@ -51,19 +61,14 @@ console.log("================================================");
 
 let hasErrors = false;
 
-// 1. Check required variables
-for (const name of requiredProduction) {
-  const isPresent = Boolean(process.env[name] && process.env[name].trim().length > 0);
-  console.log(`  ${isPresent ? "✓" : "✗"} ${name}: ${isPresent ? "PRESENT" : "MISSING"}`);
-  if (!isPresent && process.env.NODE_ENV === "production" && process.env.CI_SKIP_ENV_CHECK !== "true") {
+// 1. Check required & optional variables
+for (const item of displayStatus) {
+  const icon = item.present ? "✓" : item.required ? "✗" : "ℹ";
+  const status = item.present ? "PRESENT" : item.required ? "MISSING" : "MISSING (optional)";
+  console.log(`  ${icon} ${item.name}: ${status}`);
+  if (item.required && !item.present && process.env.NODE_ENV === "production" && process.env.CI_SKIP_ENV_CHECK !== "true") {
     hasErrors = true;
   }
-}
-
-// 2. Check optional variables
-for (const name of optionalProduction) {
-  const isPresent = Boolean(process.env[name] && process.env[name].trim().length > 0);
-  console.log(`  ℹ ${name}: ${isPresent ? "PRESENT" : "MISSING (optional)"}`);
 }
 
 // 3. Check strictly prohibited backdoor flags

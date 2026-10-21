@@ -34,6 +34,14 @@ export interface ExportedData {
   outreachHistory: OutreachRecord[];
 }
 
+/**
+ * Deprecated test harness helper.
+ * Production has zero in-memory stores; retained as a no-op for backward compatibility with legacy test suites.
+ */
+export function resetInMemoryStore(): void {
+  // No-op: Single PostgreSQL data path
+}
+
 export function maskEmail(email: string): string {
   if (!email || !email.includes("@")) return "••••@gmail.com";
   const [local, domain] = email.split("@");
