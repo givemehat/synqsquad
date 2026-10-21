@@ -61,11 +61,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const profile = await upsertTalentProfile(auth.user.id, auth.user.email, validation.data);
+    const result = await upsertTalentProfile(
+      auth.user.id,
+      auth.user.email,
+      validation.data,
+      auth.token
+    );
+
+    if (!result.success || !result.profile) {
+      return NextResponse.json(
+        { success: false, error: result.error || "Failed to save talent profile" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      data: profile,
+      data: result.profile,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to save talent profile";

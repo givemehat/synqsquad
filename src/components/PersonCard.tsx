@@ -16,7 +16,16 @@ export function PersonCard({ profile, onSelect }: PersonCardProps) {
   return (
     <article
       onClick={() => onSelect(profile)}
-      className="surface-card group relative p-4 sm:p-5 cursor-pointer flex flex-col justify-between select-none"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(profile);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`View profile for ${profile.displayName}`}
+      className="surface-card group relative p-4 sm:p-5 cursor-pointer flex flex-col justify-between select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
     >
       <div>
         {/* Top Header: Member details & Availability */}

@@ -1,10 +1,10 @@
 {
-  "name": "rivq",
+  "name": "synqsquad",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "node scripts/check-env.mjs && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "node --env-file-if-exists=.env.test.local --env-file-if-exists=.env.local --test --test-concurrency=1 tests/*.test.mjs",

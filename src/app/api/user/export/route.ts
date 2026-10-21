@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Export strictly scoped to caller's verified identity
-    const exportData = await exportUserData(auth.user.id, auth.user.email);
+    // Export strictly scoped to caller's verified identity, passing auth.token for RLS enforcement
+    const exportData = await exportUserData(auth.user.id, auth.user.email, auth.token);
     return new NextResponse(JSON.stringify(exportData, null, 2), {
       status: 200,
       headers: {

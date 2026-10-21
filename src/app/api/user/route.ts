@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const profile = await getUserProfile(auth.user.id, auth.user.email);
+    const profile = await getUserProfile(auth.user.id, auth.user.email, auth.token);
     return NextResponse.json({ success: true, data: profile });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Failed to load profile";
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       bio: sanitizeText(body.bio || ""),
       consentAt: body.consentAt || new Date().toISOString(),
       createdAt: body.createdAt || new Date().toISOString(),
-    });
+    }, auth.token);
 
     return NextResponse.json({ success: true, data: user });
   } catch (error: unknown) {

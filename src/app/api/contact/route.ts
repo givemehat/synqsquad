@@ -91,8 +91,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // IDOR immunity: history is strictly scoped to the verified caller
-    const contacted = await getContactedListings(auth.user.email);
+    // IDOR immunity: history is strictly scoped to the verified caller, passing auth.token for RLS enforcement
+    const contacted = await getContactedListings(auth.user.email, auth.token);
     return NextResponse.json({
       success: true,
       count: contacted.length,
