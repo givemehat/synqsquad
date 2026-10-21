@@ -75,7 +75,7 @@ export async function PATCH(
     }
 
     const { visible = profile.visible, availability } = parsed.data;
-    const res = await updateTalentProfileVisibility(auth.user.id, visible, availability);
+    const res = await updateTalentProfileVisibility(auth.user.id, visible, availability, auth.token);
 
     if (!res.success) {
       return NextResponse.json({ success: false, error: res.error }, { status: 400 });
@@ -115,7 +115,7 @@ export async function DELETE(
       );
     }
 
-    const res = await deleteTalentProfile(auth.user.id);
+    const res = await deleteTalentProfile(auth.user.id, auth.token);
     if (!res.success) {
       return NextResponse.json({ success: false, error: res.error }, { status: 400 });
     }

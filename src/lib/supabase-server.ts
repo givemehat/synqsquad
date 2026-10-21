@@ -1,68 +1,93 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseAdminClient, isAdminConfigured } from "./supabase-admin.ts";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   "";
 
-const PROD_SUPABASE_HOST = "kkndyiguzadfkakxjaaj.supabase.co";
-
-/**
- * Server-side Supabase client.
- * Uses SUPABASE_SERVICE_ROLE_KEY when available (for administrative / moderation writes),
- * or falls back to anon / publishable key with optional user session token for RLS isolation.
- */
-export function getSupabaseServerClient(token?: string): SupabaseClient {
-  if (
-    (process.env.NODE_ENV === "test" || process.env.TEST_ENV === "true") &&
-    supabaseUrl.includes(PROD_SUPABASE_HOST) &&
-    process.env.ALLOW_PROD_TESTS !== "true"
-  ) {
-    throw new Error(
-      "FATAL SAFETY GUARD: Mutating or testing against live production Supabase instance (kkndyiguzadfkakxjaaj.supabase.co) is prohibited during test runs."
-    );
+function validateDatabaseEnvironment(): void {
+  // Test safety guard
+  if (process.env.NODE_ENV === "test" || process.env.TEST_RUNNER === "true") {
+    const allowedTestUrl = process.env.TEST_SUPABASE_URL;
+    if (allowedTestUrl && supabaseUrl !== allowedTestUrl) {
+      throw new Error(
+        `FATAL SAFETY GUARD: Test suite URL (${supabaseUrl}) does not match TEST_SUPABASE_URL allowlist (${allowedTestUrl}).`
+      );
+    }
   }
 
   if (!supabaseUrl) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable.");
+    throw new Error(
+      "CONFIGURATION ERROR: NEXT_PUBLIC_SUPABASE_URL is missing. Database access failed."
+    );
+  }
+  if (!supabaseAnonKey) {
+    throw new Error(
+      "CONFIGURATION ERROR: NEXT_PUBLIC_SUPABASE_ANON_KEY (or PUBLISHABLE_KEY) is missing. Database access failed."
+    );
+  }
+}
+
+/**
+ * Public unauthenticated Supabase client.
+ * Uses anon/publishable key. Queries execute under Postgres 'anon' role.
+ * Queries on raw tables are blocked by RLS; queries on public views return masked data.
+ */
+export function getSupabaseAnonClient(): SupabaseClient {
+  validateDatabaseEnvironment();
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+/**
+ * Authenticated user Supabase client.
+ * Uses anon key with user's verified Bearer JWT.
+ * Queries execute under Postgres 'authenticated' role with auth.uid() matching the user.
+ * Row-Level Security (RLS) is strictly enforced by PostgreSQL as defense in depth.
+ */
+export function getSupabaseUserClient(userJwt: string): SupabaseClient {
+  validateDatabaseEnvironment();
+
+  if (!userJwt || typeof userJwt !== "string") {
+    throw new Error("AUTHENTICATION ERROR: User JWT required for user-scoped database access.");
   }
 
-  const apiKey = supabaseServiceRoleKey || supabaseAnonKey;
-  if (!apiKey) {
-    throw new Error("Missing Supabase API key (SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY).");
-  }
-
-  const globalHeaders: Record<string, string> = {};
-  if (token) {
-    globalHeaders.Authorization = `Bearer ${token}`;
-  }
-
-  return createClient(supabaseUrl, apiKey, {
+  return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
     },
     global: {
-      headers: globalHeaders,
+      headers: {
+        Authorization: `Bearer ${userJwt}`,
+      },
     },
   });
 }
 
-export function isSupabaseServerConfigured(): boolean {
-  // Automated test runs strictly default to in-memory store
-  if (process.env.NODE_ENV === "test" || process.env.TEST_ENV === "true") {
-    if (process.env.SUPABASE_TEST_MODE === "live_staging") {
-      if (supabaseUrl.includes(PROD_SUPABASE_HOST)) {
-        throw new Error(
-          "FATAL SAFETY GUARD: Tests cannot run against the live production Supabase instance (kkndyiguzadfkakxjaaj.supabase.co). Configure a local emulator or isolated staging project."
-        );
-      }
-      return Boolean(supabaseUrl && supabaseServiceRoleKey);
-    }
-    return false;
+/**
+ * Backward-compatible helper:
+ * If token is provided, returns user-scoped client with RLS.
+ * If no token is provided, returns public anon client (or admin client if admin configured and needed).
+ */
+export function getSupabaseServerClient(token?: string): SupabaseClient {
+  if (token) {
+    return getSupabaseUserClient(token);
   }
+  // If service role is configured on server, fallback to admin only for internal jobs
+  if (isAdminConfigured()) {
+    return getSupabaseAdminClient();
+  }
+  return getSupabaseAnonClient();
+}
 
-  return Boolean(supabaseUrl && supabaseServiceRoleKey);
+export function isSupabaseServerConfigured(): boolean {
+  return Boolean(supabaseUrl && supabaseAnonKey);
 }

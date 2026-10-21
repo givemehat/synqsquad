@@ -59,8 +59,8 @@ export async function PATCH(
       );
     }
 
-    // 2. Ownership check strictly keyed by auth.user.id
-    const result = await updateListingStatus(id, auth.user.id, body.status);
+    // 2. Ownership check strictly keyed by auth.user.id, passing auth.token for RLS enforcement
+    const result = await updateListingStatus(id, auth.user.id, body.status, auth.token);
     if (!result.success) {
       return NextResponse.json(
         { success: false, error: result.error },
@@ -98,8 +98,8 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // 2. Deletion ownership check strictly keyed by auth.user.id
-    const result = await deleteListing(id, auth.user.id);
+    // 2. Deletion ownership check strictly keyed by auth.user.id, passing auth.token for RLS enforcement
+    const result = await deleteListing(id, auth.user.id, auth.token);
     if (!result.success) {
       return NextResponse.json(
         { success: false, error: result.error },

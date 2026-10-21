@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const blockedUsers = await getBlockedUsers(auth.user.email);
+    const blockedUsers = await getBlockedUsers(auth.user.email, auth.token);
     return NextResponse.json({ success: true, blockedUsers });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to load blocked users.";
@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Blocker is ALWAYS the verified caller
-    const result = await blockUser(auth.user.email, blockedEmail);
+    // Blocker is ALWAYS the verified caller, passing auth.token for RLS enforcement
+    const result = await blockUser(auth.user.email, blockedEmail, auth.token);
     if (!result.success) {
       return NextResponse.json(result, { status: 400 });
     }
@@ -76,8 +76,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Blocker is ALWAYS the verified caller
-    const result = await unblockUser(auth.user.email, blockedEmail);
+    // Blocker is ALWAYS the verified caller, passing auth.token for RLS enforcement
+    const result = await unblockUser(auth.user.email, blockedEmail, auth.token);
     if (!result.success) {
       return NextResponse.json(result, { status: 400 });
     }

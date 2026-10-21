@@ -1,13 +1,15 @@
 {
-  "name": "rivq",
+  "name": "synqsquad",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "node scripts/check-env.mjs && next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --env-file-if-exists=.env.test.local --env-file-if-exists=.env.local --test --test-concurrency=1 tests/*.test.mjs",
+    "test": "node --experimental-strip-types tests/unit.test.mjs",
+    "test:integration": "node --experimental-strip-types --env-file-if-exists=.env.test.local --env-file-if-exists=.env.local --test --test-concurrency=1 tests/*.test.mjs",
     "test:e2e": "node tests/api-e2e.mjs",
     "seed:supabase": "node --experimental-strip-types scripts/seed-supabase.mjs"
   },

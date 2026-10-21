@@ -96,23 +96,26 @@ export async function POST(request: NextRequest) {
 
     const validData = validation.data;
 
-    // Persist listing with verified owner identity
-    const newListing = await createListing({
-      ownerId: auth.user.id,
-      ownerEmail: auth.user.email,
-      ownerName: validData.ownerName || auth.user.name || "Developer",
-      ownerCollege: validData.ownerCollege || "Independent",
-      ownerRole: validData.ownerRole || "Developer",
-      ownerPhoto: validData.ownerPhoto || auth.user.photo || "",
-      type: validData.type,
-      title: validData.title,
-      event: validData.event,
-      deadline: validData.deadline || "Upcoming",
-      skillsNeeded: validData.skillsNeeded,
-      slots: validData.slots,
-      totalSlots: validData.totalSlots,
-      description: validData.description,
-    });
+    // Persist listing with verified owner identity (carrying user JWT for RLS enforcement)
+    const newListing = await createListing(
+      {
+        ownerId: auth.user.id,
+        ownerEmail: auth.user.email,
+        ownerName: validData.ownerName || auth.user.name || "Developer",
+        ownerCollege: validData.ownerCollege || "Independent",
+        ownerRole: validData.ownerRole || "Developer",
+        ownerPhoto: validData.ownerPhoto || auth.user.photo || "",
+        type: validData.type,
+        title: validData.title,
+        event: validData.event,
+        deadline: validData.deadline || "Upcoming",
+        skillsNeeded: validData.skillsNeeded,
+        slots: validData.slots,
+        totalSlots: validData.totalSlots,
+        description: validData.description,
+      },
+      auth.token
+    );
 
     return NextResponse.json(
       {

@@ -1,17 +1,31 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { TalentProfile, ScreenState, LookingForType } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { PersonCard } from "@/components/PersonCard";
-import { PersonDetailModal } from "@/components/PersonDetailModal";
 import { GoogleAuthModal } from "@/components/GoogleAuthModal";
-import { UserProfileDrawer } from "@/components/UserProfileDrawer";
-import { CreateListingModal } from "@/components/CreateListingModal";
 import { Footer } from "@/components/Footer";
 import { StateView } from "@/components/StateView";
 import { Search, Users } from "lucide-react";
+
+// Code-split heavy modals and drawers
+const PersonDetailModal = dynamic(
+  () => import("@/components/PersonDetailModal").then((mod) => mod.PersonDetailModal),
+  { ssr: false }
+);
+const UserProfileDrawer = dynamic(
+  () => import("@/components/UserProfileDrawer").then((mod) => mod.UserProfileDrawer),
+  { ssr: false }
+);
+const CreateListingModal = dynamic(
+  () => import("@/components/CreateListingModal").then((mod) => mod.CreateListingModal),
+  { ssr: false }
+);
+
+const PAGE_SIZE = 12;
 
 export default function PeoplePage() {
   const { user, openAuthModal } = useAuth();
@@ -22,6 +36,7 @@ export default function PeoplePage() {
   const [selectedLookingFor, setSelectedLookingFor] = useState<string>("all");
   const [selectedExperience, setSelectedExperience] = useState<string>("all");
   const [onlyOpen, setOnlyOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // Modals & Drawers
   const [selectedProfile, setSelectedProfile] = useState<TalentProfile | null>(null);
@@ -88,6 +103,15 @@ export default function PeoplePage() {
     });
   }, [profiles, onlyOpen, selectedLookingFor, selectedExperience, searchQuery]);
 
+  // Reset pagination when filter parameters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchQuery, selectedLookingFor, selectedExperience, onlyOpen]);
+
+  const displayedProfiles = useMemo(() => {
+    return filteredProfiles.slice(0, visibleCount);
+  }, [filteredProfiles, visibleCount]);
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-canvas)] text-[var(--text-primary)]">
       <Navbar
@@ -106,7 +130,7 @@ export default function PeoplePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[var(--border-default)]">
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--accent-subtle)] text-[var(--accent-primary)] mb-2">
-                <Users size={13} />
+                <Users size={13} aria-hidden="true" />
                 <span>Talent Directory</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
@@ -124,23 +148,26 @@ export default function PeoplePage() {
             <div className="relative flex-1">
               <Search
                 size={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]"
+                aria-hidden="true"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none"
               />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search skills, names or headlines"
                 placeholder="Search skills (e.g. Next.js, PyTorch, Rust), names or headlines..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] transition-colors"
+                className="w-full pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] transition-colors"
               />
             </div>
 
             {/* Looking For Dropdown */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <select
                 value={selectedLookingFor}
                 onChange={(e) => setSelectedLookingFor(e.target.value)}
-                className="py-2.5 px-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-xs font-medium text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] cursor-pointer"
+                aria-label="Filter by collaboration goal"
+                className="py-2.5 px-3 min-h-[44px] rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-xs font-medium text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] cursor-pointer"
               >
                 <option value="all">All Goals</option>
                 <option value="hackathon">Hackathons</option>
@@ -153,7 +180,8 @@ export default function PeoplePage() {
               <select
                 value={selectedExperience}
                 onChange={(e) => setSelectedExperience(e.target.value)}
-                className="py-2.5 px-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-xs font-medium text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] cursor-pointer"
+                aria-label="Filter by experience level"
+                className="py-2.5 px-3 min-h-[44px] rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-xs font-medium text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] cursor-pointer"
               >
                 <option value="all">All Levels</option>
                 <option value="student">Student</option>
@@ -162,11 +190,12 @@ export default function PeoplePage() {
               </select>
 
               {/* Open to squads checkbox */}
-              <label className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer select-none">
+              <label className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={onlyOpen}
                   onChange={(e) => setOnlyOpen(e.target.checked)}
+                  aria-label="Show only members open now"
                   className="rounded border-[var(--border-default)] text-[var(--accent-primary)] focus:ring-0"
                 />
                 <span>Open Now</span>
@@ -207,45 +236,67 @@ export default function PeoplePage() {
         )}
 
         {screenState === "idle" && filteredProfiles.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProfiles.map((profile) => (
-              <PersonCard
-                key={profile.id}
-                profile={profile}
-                onSelect={(p) => setSelectedProfile(p)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayedProfiles.map((profile) => (
+                <PersonCard
+                  key={profile.id}
+                  profile={profile}
+                  onSelect={(p) => setSelectedProfile(p)}
+                />
+              ))}
+            </div>
+
+            {visibleCount < filteredProfiles.length && (
+              <div className="mt-8 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                  className="px-6 py-2.5 min-h-[44px] rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] text-sm font-semibold text-[var(--text-primary)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+                >
+                  Load More Collaborators ({filteredProfiles.length - visibleCount} remaining)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 
       <Footer />
 
-      {/* Detail Modal */}
-      <PersonDetailModal
-        profile={selectedProfile}
-        isOpen={Boolean(selectedProfile)}
-        onClose={() => setSelectedProfile(null)}
-        onBlock={(email) => {
-          setProfiles((prev) => prev.filter((p) => p.email !== email));
-        }}
-      />
+      {/* Detail Modal (Lazy Mounted) */}
+      {selectedProfile && (
+        <PersonDetailModal
+          profile={selectedProfile}
+          isOpen={Boolean(selectedProfile)}
+          onClose={() => setSelectedProfile(null)}
+          onBlock={(email) => {
+            setProfiles((prev) => prev.filter((p) => p.email !== email));
+          }}
+        />
+      )}
 
-      {/* Global Auth & Profile Drawers */}
+      {/* Global Auth & Profile Drawers (Lazy Mounted) */}
       <GoogleAuthModal />
-      <UserProfileDrawer
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        listings={[]}
-        onListingUpdated={() => {}}
-        onListingDeleted={() => {}}
-        onSelectListing={() => {}}
-      />
-      <CreateListingModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onListingCreated={() => setIsCreateOpen(false)}
-      />
+
+      {isProfileOpen && (
+        <UserProfileDrawer
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+          listings={[]}
+          onListingUpdated={() => {}}
+          onListingDeleted={() => {}}
+          onSelectListing={() => {}}
+        />
+      )}
+
+      {isCreateOpen && (
+        <CreateListingModal
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          onListingCreated={() => setIsCreateOpen(false)}
+        />
+      )}
     </div>
   );
 }

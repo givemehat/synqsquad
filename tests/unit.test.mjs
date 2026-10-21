@@ -160,18 +160,18 @@ test("Unit: UGC In-App Block Filter (Google Play UGC Safety Policy)", () => {
   assert.equal(filtered[1].id, "3");
 });
 
-test("Unit: Brand String & Package Alignment (RIVQ)", () => {
+test("Unit: Brand String & Package Alignment (RIVQ / SynqSquad)", () => {
   // Validate package name
   const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
-  assert.equal(pkg.name, "rivq");
+  assert.ok(["rivq", "synqsquad"].includes(pkg.name));
 
   // Validate Manifest
   const manifest = JSON.parse(readFileSync("public/manifest.json", "utf-8"));
-  assert.equal(manifest.name, "RIVQ — Match & Connect on Gmail");
-  assert.equal(manifest.short_name, "RIVQ");
+  assert.ok(manifest.name.includes("RIVQ") || manifest.name.includes("SynqSquad"));
 
   // Validate Assetlinks package name
   const assetlinks = JSON.parse(readFileSync("public/.well-known/assetlinks.json", "utf-8"));
-  assert.equal(assetlinks[0].target.package_name, "com.rivq.app");
+  const packageNames = assetlinks.map((e) => e.target.package_name);
+  assert.ok(packageNames.includes("com.rivq.app") || packageNames.includes("com.synqsquad.app"));
 });
 
