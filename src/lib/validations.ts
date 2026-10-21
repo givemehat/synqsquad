@@ -84,7 +84,7 @@ export const listingInputSchema = z
             (process.env.NODE_ENV !== "production" && lower.endsWith("@example.com"))
           );
         },
-        "SynqSquad requires a verified @gmail.com or university email address"
+        "RIVQ requires a verified @gmail.com or university email address"
       )
       .transform((e) => e.toLowerCase().trim()),
     ownerCollege: z.string().max(100).optional().default("Independent").transform(sanitizeText),
