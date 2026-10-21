@@ -43,10 +43,19 @@ const hasClientKey = Boolean(
 );
 const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
 
+// On Vercel build environments, Sensitive Environment Variables are withheld
+// during the build phase and injected at runtime into the serverless Lambdas.
+const isVercelBuild = Boolean(process.env.VERCEL || process.env.NOW_BUILDER);
+
 const displayStatus = [
   { name: "NEXT_PUBLIC_SUPABASE_URL", present: hasSupabaseUrl, required: true },
   { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY", present: hasClientKey, required: true },
-  { name: "SUPABASE_SERVICE_ROLE_KEY", present: hasServiceRoleKey, required: true },
+  { 
+    name: "SUPABASE_SERVICE_ROLE_KEY", 
+    present: hasServiceRoleKey, 
+    required: !isVercelBuild,
+    note: isVercelBuild && !hasServiceRoleKey ? " (Runtime-injected Vercel Sensitive Variable)" : ""
+  },
   { name: "NEXT_PUBLIC_APP_URL", present: Boolean(process.env.NEXT_PUBLIC_APP_URL?.trim()), required: false },
   { name: "PLAY_APP_SIGNING_SHA256", present: Boolean(process.env.PLAY_APP_SIGNING_SHA256?.trim()), required: false },
 ];
@@ -64,7 +73,8 @@ let hasErrors = false;
 // 1. Check required & optional variables
 for (const item of displayStatus) {
   const icon = item.present ? "✓" : item.required ? "✗" : "ℹ";
-  const status = item.present ? "PRESENT" : item.required ? "MISSING" : "MISSING (optional)";
+  const note = item.note || "";
+  const status = item.present ? "PRESENT" : item.required ? "MISSING" : `MISSING (optional)${note}`;
   console.log(`  ${icon} ${item.name}: ${status}`);
   if (item.required && !item.present && process.env.NODE_ENV === "production" && process.env.CI_SKIP_ENV_CHECK !== "true") {
     hasErrors = true;
