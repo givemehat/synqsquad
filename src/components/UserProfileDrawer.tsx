@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { Listing } from "@/types";
-import { X, Trash2, Mail, ShieldCheck, LogOut, RefreshCw } from "lucide-react";
+import { X, Trash2, Mail, ShieldCheck, LogOut, RefreshCw, Edit3, ExternalLink } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 
 interface UserProfileDrawerProps {
@@ -116,24 +117,60 @@ export function UserProfileDrawer({
         {/* Header */}
         <div className="px-5 py-4 border-b border-[var(--border-default)] flex items-center justify-between bg-[var(--bg-elevated)]">
           <div className="flex items-center gap-2.5">
-            <Avatar src={user.photo} name={user.name} size={32} />
+            <Avatar src={user.photo} name={user.name} size={36} />
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-[var(--text-primary)]">{user.name}</span>
                 <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
               </div>
-              <span className="text-[11px] text-[var(--text-secondary)] font-mono">{user.email}</span>
+              <span className="text-[11px] text-[var(--text-secondary)] font-mono block">{user.email}</span>
+              <span className="text-[11px] text-[var(--accent-primary)] font-medium block">
+                {user.role} • {user.college}
+              </span>
             </div>
           </div>
 
-          <button
-            type="button"
+          <div className="flex items-center gap-1">
+            <Link
+              href="/profile"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center gap-1 text-xs"
+              title="Edit Profile"
+            >
+              <Edit3 className="w-4 h-4" />
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close drawer"
+              className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Profile Card Summary */}
+        <div className="px-5 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between text-xs">
+          <div className="flex flex-wrap gap-1 max-w-[260px]">
+            {user.skills?.slice(0, 4).map((sk) => (
+              <span key={sk} className="px-1.5 py-0.5 rounded bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[10px] text-[var(--text-secondary)] font-mono">
+                {sk}
+              </span>
+            ))}
+            {(user.skills?.length || 0) > 4 && (
+              <span className="text-[10px] text-[var(--text-tertiary)] self-center">
+                +{(user.skills?.length || 0) - 4} more
+              </span>
+            )}
+          </div>
+          <Link
+            href="/profile"
             onClick={onClose}
-            aria-label="Close drawer"
-            className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+            className="text-[11px] font-semibold text-[var(--accent-primary)] hover:underline flex items-center gap-0.5"
           >
-            <X className="w-4 h-4" />
-          </button>
+            Full Profile <ExternalLink className="w-3 h-3" />
+          </Link>
         </div>
 
         {/* Tab Controls */}

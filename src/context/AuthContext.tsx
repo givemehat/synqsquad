@@ -120,16 +120,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? "University"
         : "Independent";
 
+      let pendingData: Partial<UserProfile> = {};
+      try {
+        const storedPending = localStorage.getItem("rivq_pending_profile");
+        if (storedPending) {
+          pendingData = JSON.parse(storedPending);
+          localStorage.removeItem("rivq_pending_profile");
+        }
+      } catch {}
+
       const defaultProfile: UserProfile = {
         id: u.id,
         name: u.user_metadata?.full_name || u.user_metadata?.name || email.split("@")[0] || "Developer",
         email: email,
         photo: u.user_metadata?.avatar_url || undefined,
-        role: "Developer",
-        college: collegeGuess,
-        skills: ["React", "Python"],
-        lookingFor: "both",
-        bio: "",
+        role: pendingData.role || "Developer",
+        college: pendingData.college || collegeGuess,
+        skills: pendingData.skills?.length ? pendingData.skills : ["React", "Python"],
+        lookingFor: pendingData.lookingFor || "both",
+        bio: pendingData.bio || "",
         consentAt: new Date().toISOString(),
         createdAt: u.created_at || new Date().toISOString(),
       };
@@ -237,7 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(
-    async (_profileData?: Partial<UserProfile>): Promise<boolean> => {
+    async (profileData?: Partial<UserProfile>): Promise<boolean> => {
       // 1. Check network connectivity
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         setLoginError("You are currently offline. Please connect to the internet to sign in.");
@@ -248,6 +257,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.setItem("__test_storage__", "1");
         localStorage.removeItem("__test_storage__");
+        if (profileData) {
+          localStorage.setItem("rivq_pending_profile", JSON.stringify(profileData));
+        }
       } catch {
         setLoginError("Cookies or local storage are blocked in your browser. Please enable storage to sign in.");
         return false;
