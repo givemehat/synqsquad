@@ -78,10 +78,13 @@ export const listingInputSchema = z
           const lower = email.toLowerCase();
           return (
             lower.endsWith("@gmail.com") ||
+            lower.endsWith(".ac.in") ||
+            lower.endsWith(".edu") ||
+            lower.endsWith(".edu.in") ||
             (process.env.NODE_ENV !== "production" && lower.endsWith("@example.com"))
           );
         },
-        "RIVQ requires a verified @gmail.com address"
+        "SynqSquad requires a verified @gmail.com or university email address"
       )
       .transform((e) => e.toLowerCase().trim()),
     ownerCollege: z.string().max(100).optional().default("Independent").transform(sanitizeText),
@@ -122,10 +125,13 @@ export const contactInputSchema = z
           const lower = email.toLowerCase();
           return (
             lower.endsWith("@gmail.com") ||
+            lower.endsWith(".ac.in") ||
+            lower.endsWith(".edu") ||
+            lower.endsWith(".edu.in") ||
             (process.env.NODE_ENV !== "production" && lower.endsWith("@example.com"))
           );
         },
-        "Contact sender must have a verified @gmail.com address"
+        "Contact sender must have a verified @gmail.com or university email address"
       )
       .transform((e) => e.toLowerCase().trim()),
     listingId: z.string().min(1, "Listing ID is required"),

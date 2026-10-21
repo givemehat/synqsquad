@@ -112,36 +112,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
+    const syncUserProfile = async (u: { id: string; email?: string; user_metadata?: Record<string, any>; created_at?: string }, token?: string) => {
+      const email = u.email || "";
+      const collegeGuess = email.endsWith("@gbu.ac.in")
+        ? "Gautam Buddha University"
+        : email.includes(".ac.in") || email.includes(".edu")
+        ? "University"
+        : "Independent";
+
+      const defaultProfile: UserProfile = {
+        id: u.id,
+        name: u.user_metadata?.full_name || u.user_metadata?.name || email.split("@")[0] || "Developer",
+        email: email,
+        photo: u.user_metadata?.avatar_url || undefined,
+        role: "Developer",
+        college: collegeGuess,
+        skills: ["React", "Python"],
+        lookingFor: "both",
+        bio: "",
+        consentAt: new Date().toISOString(),
+        createdAt: u.created_at || new Date().toISOString(),
+      };
+
+      try {
+        if (token) {
+          const fetchRes = await fetch("/api/user", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const fetchData = await fetchRes.json();
+          if (fetchData.success && fetchData.data) {
+            localStorage.setItem("rivq_user", JSON.stringify(fetchData.data));
+            localStorage.setItem("synqsquad_user", JSON.stringify(fetchData.data));
+            notifyAuthChange();
+            if (pendingAction) {
+              pendingAction();
+              setPendingAction(null);
+            }
+            return;
+          }
+
+          const upsertRes = await fetch("/api/user", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(defaultProfile),
+          });
+          const upsertData = await upsertRes.json();
+          const finalProfile = upsertData.success && upsertData.data ? upsertData.data : defaultProfile;
+          localStorage.setItem("rivq_user", JSON.stringify(finalProfile));
+          localStorage.setItem("synqsquad_user", JSON.stringify(finalProfile));
+          notifyAuthChange();
+          if (pendingAction) {
+            pendingAction();
+            setPendingAction(null);
+          }
+          return;
+        }
+      } catch (e) {
+        console.error("Profile sync error:", e);
+      }
+
+      try {
+        localStorage.setItem("rivq_user", JSON.stringify(defaultProfile));
+        localStorage.setItem("synqsquad_user", JSON.stringify(defaultProfile));
+        notifyAuthChange();
+        if (pendingAction) {
+          pendingAction();
+          setPendingAction(null);
+        }
+      } catch {}
+    };
+
     // Check active session on mount
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error("Supabase getSession error:", error.message);
         return;
       }
-      if (session?.user && !user) {
-        const u = session.user;
-        const profile: UserProfile = {
-          id: u.id,
-          name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split("@")[0] || "User",
-          email: u.email || "",
-          photo: u.user_metadata?.avatar_url || undefined,
-          role: "Developer",
-          college: "Independent",
-          skills: ["Next.js", "Python"],
-          lookingFor: "both",
-          bio: "",
-          consentAt: new Date().toISOString(),
-          createdAt: u.created_at || new Date().toISOString(),
-        };
-        try {
-          localStorage.setItem("rivq_user", JSON.stringify(profile));
-          localStorage.setItem("synqsquad_user", JSON.stringify(profile));
-          notifyAuthChange();
-          if (pendingAction) {
-            pendingAction();
-            setPendingAction(null);
-          }
-        } catch {}
+      if (session?.user && (!user || user.id !== session.user.id)) {
+        syncUserProfile(session.user, session.access_token);
       }
     });
 
@@ -158,29 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
         // Token refreshed successfully
       } else if (event === "SIGNED_IN" && session?.user) {
-        const u = session.user;
-        const profile: UserProfile = {
-          id: u.id,
-          name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split("@")[0] || "User",
-          email: u.email || "",
-          photo: u.user_metadata?.avatar_url || undefined,
-          role: "Developer",
-          college: "Independent",
-          skills: ["Next.js", "Python"],
-          lookingFor: "both",
-          bio: "",
-          consentAt: new Date().toISOString(),
-          createdAt: u.created_at || new Date().toISOString(),
-        };
-        try {
-          localStorage.setItem("rivq_user", JSON.stringify(profile));
-          localStorage.setItem("synqsquad_user", JSON.stringify(profile));
-          notifyAuthChange();
-          if (pendingAction) {
-            pendingAction();
-            setPendingAction(null);
-          }
-        } catch {}
+        syncUserProfile(session.user, session.access_token);
       }
     });
 
