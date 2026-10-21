@@ -58,13 +58,16 @@ jobs:
           CI_SKIP_ENV_CHECK: "true"
 
       - name: Run E2E API Verification Suite
-        if: ${{ secrets.SUPABASE_TEST_ANON_KEY != '' }}
         run: |
-          npx next start -p 3000 &
-          SERVER_PID=$!
-          sleep 4
-          node tests/api-e2e.mjs
-          kill $SERVER_PID
+          if [ -z "${{ secrets.SUPABASE_TEST_ANON_KEY }}" ]; then
+            echo "Skipping E2E API verification suite: SUPABASE_TEST_ANON_KEY secret not configured in repo."
+          else
+            npx next start -p 3000 &
+            SERVER_PID=$!
+            sleep 4
+            node tests/api-e2e.mjs
+            kill $SERVER_PID
+          fi
         env:
           BASE_URL: "http://127.0.0.1:3000"
 
