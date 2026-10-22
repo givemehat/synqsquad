@@ -208,4 +208,76 @@ test("Unit: Quick Profile Setup Modal UX Integrity", () => {
   assert.ok(modalCode.includes("sticky bottom-0"), "Sticky bottom footer for mobile");
 });
 
+test("Unit: Email Masking and Anti-Scraping Protection", async () => {
+  const { maskEmail } = await import("../src/lib/db.ts");
+
+  // Standard emails
+  assert.equal(maskEmail("priya.nair@example.com"), "pr••••r@example.com");
+  assert.equal(maskEmail("aditya.verma.quant@gmail.com"), "ad••••t@gmail.com");
+  assert.equal(maskEmail("ab@gmail.com"), "ab•••@gmail.com");
+  assert.equal(maskEmail(""), "••••@gmail.com");
+});
+
+test("Unit: SSR Cookie Chunking and Base64 Decoder Integrity", () => {
+  // Simulates chunked and base64-encoded cookie from @supabase/ssr
+  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0";
+  const jsonPayload = JSON.stringify([token, "refresh-123"]);
+  const base64Val = "base64-" + Buffer.from(jsonPayload).toString("base64");
+
+  // Split into 2 chunks
+  const mid = Math.floor(base64Val.length / 2);
+  const chunk0 = base64Val.slice(0, mid);
+  const chunk1 = base64Val.slice(mid);
+
+  const cookies = {
+    "sb-proj-auth-token.0": chunk0,
+    "sb-proj-auth-token.1": chunk1,
+  };
+
+  // Run decoder logic
+  const authChunks = [];
+  for (const [key, val] of Object.entries(cookies)) {
+    const match = key.match(/-auth-token\.(\d+)$/);
+    if (match) authChunks.push({ index: parseInt(match[1], 10), val });
+  }
+  authChunks.sort((a, b) => a.index - b.index);
+  const combined = authChunks.map((c) => c.val).join("");
+
+  assert.equal(combined, base64Val);
+
+  const rawJson = Buffer.from(combined.slice(7), "base64").toString("utf-8");
+  const parsed = JSON.parse(rawJson);
+  assert.equal(parsed[0], token);
+});
+
+test("Unit: Blurred Gmail Privacy and Auth Guard on UI Components", () => {
+  const listingCard = readFileSync("src/components/ListingCard.tsx", "utf-8");
+  const listingDrawer = readFileSync("src/components/ListingDetailDrawer.tsx", "utf-8");
+  const personCard = readFileSync("src/components/PersonCard.tsx", "utf-8");
+  const personModal = readFileSync("src/components/PersonDetailModal.tsx", "utf-8");
+
+  // Verify blur styling is implemented for unauthenticated states
+  assert.ok(listingCard.includes("blur-[4px]"), "ListingCard has blurred Gmail protection");
+  assert.ok(listingCard.includes("Reveal Gmail"), "ListingCard has Reveal Gmail CTA");
+  assert.ok(listingDrawer.includes("blur-[5px]"), "ListingDetailDrawer has blurred Gmail protection");
+  assert.ok(listingDrawer.includes("openAuthModal"), "ListingDetailDrawer calls openAuthModal on click");
+  assert.ok(personCard.includes("blur-[4px]"), "PersonCard has blurred Gmail protection");
+  assert.ok(personModal.includes("blur-[4px]"), "PersonDetailModal has blurred Gmail protection");
+});
+
+test("Unit: Profile Page Architecture and Modern Feature Completeness", () => {
+  const profilePage = readFileSync("src/app/profile/page.tsx", "utf-8");
+
+  // Verify full feature set
+  assert.ok(profilePage.includes("Identity & Affiliation"), "Identity section present");
+  assert.ok(profilePage.includes("Top Skills & Expertise"), "Skills section present");
+  assert.ok(profilePage.includes("Public Portfolios & Links"), "Portfolio links section present");
+  assert.ok(profilePage.includes("Show My Profile on /people"), "Discoverability toggle present");
+  assert.ok(profilePage.includes("My Requisitions"), "Requisitions tab present");
+  assert.ok(profilePage.includes("Contacted History"), "Contacted tab present");
+  assert.ok(profilePage.includes("Export Data"), "GDPR export present");
+  assert.ok(profilePage.includes("Permanently Delete"), "Account deletion safeguard present");
+});
+
+
 

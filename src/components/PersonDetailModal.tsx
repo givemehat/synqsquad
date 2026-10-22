@@ -153,7 +153,33 @@ export function PersonDetailModal({
             <p className="text-sm text-[var(--accent-primary)] font-medium mt-0.5">
               {profile.headline}
             </p>
-            <div className="flex items-center gap-2 mt-2">
+
+            {/* Gmail Reveal / Blurred display */}
+            <div className="mt-2.5">
+              {user ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)] text-xs font-mono text-[var(--text-secondary)]">
+                  <Mail className="w-3.5 h-3.5 text-blue-500" />
+                  <span>{profile.email}</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openAuthModal()}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/25 transition-all text-xs cursor-pointer group/reveal"
+                  title="Sign in with Google to reveal Gmail ID"
+                >
+                  <Mail className="w-3.5 h-3.5 text-blue-500" />
+                  <span className="font-mono text-[11px] text-[var(--text-tertiary)] filter blur-[4px] select-none">
+                    contact@gmail.com
+                  </span>
+                  <span className="text-[10px] font-semibold text-blue-500 group-hover/reveal:underline">
+                    Sign in to reveal Gmail
+                  </span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 mt-2.5">
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-default)]">
                 {profile.experienceLevel}
               </span>

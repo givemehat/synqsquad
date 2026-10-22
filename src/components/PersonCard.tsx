@@ -2,8 +2,9 @@
 
 import React from "react";
 import { TalentProfile } from "@/types";
-import { ArrowRight, Globe, Code2 } from "lucide-react";
+import { ArrowRight, Globe, Code2, Mail } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { useAuth } from "@/context/AuthContext";
 
 interface PersonCardProps {
   profile: TalentProfile;
@@ -11,6 +12,7 @@ interface PersonCardProps {
 }
 
 export function PersonCard({ profile, onSelect }: PersonCardProps) {
+  const { user, openAuthModal } = useAuth();
   const isAvailable = profile.availability === "open";
 
   return (
@@ -25,7 +27,7 @@ export function PersonCard({ profile, onSelect }: PersonCardProps) {
       role="button"
       tabIndex={0}
       aria-label={`View profile for ${profile.displayName}`}
-      className="surface-card group relative p-4 sm:p-5 cursor-pointer flex flex-col justify-between select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]"
+      className="surface-card group relative p-4 sm:p-5 cursor-pointer flex flex-col justify-between select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] hover:border-[var(--border-highlight)] transition-all"
     >
       <div>
         {/* Top Header: Member details & Availability */}
@@ -41,9 +43,29 @@ export function PersonCard({ profile, onSelect }: PersonCardProps) {
                   • {profile.experienceLevel}
                 </span>
               </div>
-              <span className="text-[11px] text-[var(--text-secondary)] font-mono">
-                {profile.email}
-              </span>
+              {user ? (
+                <div className="flex items-center gap-1 text-[11px] text-[var(--text-secondary)] font-mono">
+                  <Mail className="w-3 h-3 text-blue-500 shrink-0" />
+                  <span className="truncate max-w-[150px]">{profile.email}</span>
+                </div>
+              ) : (
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openAuthModal();
+                  }}
+                  className="flex items-center gap-1 cursor-pointer group/mail"
+                  title="Sign in with Google to reveal Gmail ID"
+                >
+                  <Mail className="w-3 h-3 text-blue-500 shrink-0" />
+                  <span className="text-[11px] font-mono text-[var(--text-tertiary)] filter blur-[4px] select-none">
+                    user@gmail.com
+                  </span>
+                  <span className="text-[9px] font-semibold text-blue-500 bg-blue-500/10 px-1 py-0.2 rounded border border-blue-500/20 group-hover/mail:bg-blue-500/20">
+                    Reveal
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

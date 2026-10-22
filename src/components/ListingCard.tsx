@@ -2,8 +2,9 @@
 
 import React from "react";
 import { Listing } from "@/types";
-import { Calendar, ArrowRight, ShieldCheck } from "lucide-react";
+import { Calendar, ArrowRight, Mail } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { useAuth } from "@/context/AuthContext";
 
 interface ListingCardProps {
   listing: Listing;
@@ -11,12 +12,13 @@ interface ListingCardProps {
 }
 
 export function ListingCard({ listing, onSelect }: ListingCardProps) {
+  const { user, openAuthModal } = useAuth();
   const isFilled = listing.status === "filled";
 
   return (
     <article
       onClick={() => onSelect(listing)}
-      className="surface-card group relative p-4 sm:p-5 cursor-pointer flex flex-col justify-between select-none"
+      className="surface-card group relative p-4 sm:p-5 cursor-pointer flex flex-col justify-between select-none hover:border-[var(--border-highlight)] transition-all"
     >
       <div>
         {/* Top Header: Creator details & Slots */}
@@ -92,14 +94,36 @@ export function ListingCard({ listing, onSelect }: ListingCardProps) {
         </div>
       </div>
 
-      {/* Quiet Bottom Action */}
-      <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs text-[var(--text-secondary)]">
-        <span className="text-[11px] flex items-center gap-1 text-[var(--text-tertiary)]">
-          <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-          <span>Verified Gmail</span>
-        </span>
+      {/* Bottom Action & Gmail Visibility Pill */}
+      <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
+        {user ? (
+          <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+            <Mail className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span className="font-mono text-[11px] truncate max-w-[170px] sm:max-w-[200px]">
+              {listing.ownerEmail}
+            </span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              openAuthModal();
+            }}
+            className="flex items-center gap-1.5 group/gmail text-left cursor-pointer"
+            title="Sign in with Google to reveal Gmail ID"
+          >
+            <Mail className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span className="font-mono text-[11px] text-[var(--text-tertiary)] filter blur-[4px] select-none">
+              contact@gmail.com
+            </span>
+            <span className="text-[10px] font-semibold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 group-hover/gmail:bg-blue-500/20 transition-colors">
+              Reveal Gmail
+            </span>
+          </button>
+        )}
 
-        <span className="text-[var(--accent-primary)] font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+        <span className="text-[var(--accent-primary)] font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1 shrink-0 ml-2">
           <span>View Details</span>
           <ArrowRight className="w-3 h-3" />
         </span>

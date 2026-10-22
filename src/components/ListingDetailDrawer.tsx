@@ -18,6 +18,7 @@ import {
   Ban,
   Sparkles,
   ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 
@@ -323,23 +324,67 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
               </div>
 
               {/* Lead Information */}
-              <div className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] space-y-2">
-                <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
-                  Lead / Creator
-                </span>
+              <div className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider block">
+                    Project Lead
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>Verified Google Account</span>
+                  </span>
+                </div>
+
                 <div className="flex items-center gap-3">
-                  <Avatar src={listing.ownerPhoto} name={listing.ownerName} size={40} />
+                  <Avatar src={listing.ownerPhoto} name={listing.ownerName} size={42} />
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-semibold text-[var(--text-primary)]">
-                        {listing.ownerName}
-                      </span>
-                      <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-                    </div>
+                    <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                      {listing.ownerName}
+                    </h4>
                     <p className="text-xs text-[var(--text-secondary)]">
                       {listing.ownerRole} • {listing.ownerCollege}
                     </p>
                   </div>
+                </div>
+
+                {/* Lead Gmail Pill: Blurred when unauthenticated, revealed when logged in */}
+                <div className="pt-2 border-t border-[var(--border-subtle)]">
+                  {user ? (
+                    <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-default)]">
+                      <div className="flex items-center gap-2 truncate">
+                        <Mail className="w-4 h-4 text-blue-500 shrink-0" />
+                        <span className="text-xs font-mono text-[var(--text-primary)] truncate">
+                          {unmaskedEmail || listing.ownerEmail}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleInitiateConnect}
+                        className="px-2.5 py-1 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shrink-0 transition-colors cursor-pointer"
+                      >
+                        Email Lead
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => openAuthModal()}
+                      className="cursor-pointer group p-2.5 rounded-lg bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 transition-all flex items-center justify-between"
+                      title="Sign in with Google to reveal Gmail ID"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-blue-500 shrink-0" />
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono filter blur-[5px] select-none text-[var(--text-primary)]">
+                            lead.contact@gmail.com
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-semibold text-blue-500 flex items-center gap-1 group-hover:underline">
+                        <span>Sign in to reveal Gmail</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
