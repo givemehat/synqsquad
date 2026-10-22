@@ -175,3 +175,37 @@ test("Unit: Brand String & Package Alignment (RIVQ / SynqSquad)", () => {
   assert.ok(packageNames.includes("com.rivq.app") || packageNames.includes("com.synqsquad.app"));
 });
 
+test("Unit: Quick Profile Setup Modal UX Integrity", () => {
+  const modalCode = readFileSync("src/components/GoogleAuthModal.tsx", "utf-8");
+
+  // 1. Role dropdown: Custom popover, no native select
+  assert.equal(modalCode.includes("<select"), false, "Must not use native select");
+  assert.ok(modalCode.includes("roleDropdownRef"), "Has custom role dropdown ref");
+  assert.ok(modalCode.includes('role="listbox"'), "Has accessible listbox for roles");
+  assert.ok(modalCode.includes("handleRoleKeyDown"), "Has keyboard navigation for roles");
+
+  // 2. Skill chips: Sans font, grouped categories, 36px height, live counter
+  assert.ok(modalCode.includes("font-sans"), "Skill chips must use sans font");
+  assert.ok(modalCode.includes("SKILL_GROUPS"), "Skills must be grouped neatly");
+  assert.ok(modalCode.includes("/5 selected"), "Must show live counter for skills");
+  assert.ok(modalCode.includes("Select at least 3"), "Must show hint when under 3 skills");
+  assert.ok(modalCode.includes("h-[36px]"), "Skill chips must be 36px height");
+
+  // 3. Segmented control for Looking for
+  assert.ok(modalCode.includes("grid grid-cols-3"), "Segmented control layout");
+
+  // 4. College placeholder and Bio 140 character limit
+  assert.ok(modalCode.includes("e.g. IIT Delhi"), "College placeholder present");
+  assert.ok(modalCode.includes("maxLength={140}"), "Bio 140 char limit present");
+  assert.ok(modalCode.includes("/140"), "Bio live counter present");
+
+  // 5. Clean header & max-width 520px
+  assert.ok(modalCode.includes("Complete your profile"), "Clean header title");
+  assert.ok(modalCode.includes("max-w-[520px]"), "Max-width 520px modal container");
+
+  // 6. Mobile bottom sheet
+  assert.ok(modalCode.includes("max-sm:rounded-t-[20px]"), "Mobile bottom sheet rounded top corners");
+  assert.ok(modalCode.includes("sticky bottom-0"), "Sticky bottom footer for mobile");
+});
+
+
