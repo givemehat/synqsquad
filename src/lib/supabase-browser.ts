@@ -1,4 +1,5 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey =
@@ -8,14 +9,14 @@ const supabaseAnonKey =
 
 let browserClient: SupabaseClient | null = null;
 
-// Browser client for frontend Auth & Realtime
+// Browser client for frontend Auth & Realtime using @supabase/ssr
 export function getSupabaseBrowserClient(): SupabaseClient | null {
   if (typeof window === "undefined") return null;
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
   }
   if (!browserClient) {
-    browserClient = createClient(supabaseUrl, supabaseAnonKey, {
+    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,

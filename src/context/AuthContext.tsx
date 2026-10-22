@@ -112,8 +112,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = getSupabaseBrowserClient();
     if (!supabase) return;
 
-    const syncUserProfile = async (u: { id: string; email?: string; user_metadata?: Record<string, any>; created_at?: string }, token?: string) => {
-      const email = u.email || "";
+    // Check for query param auth_error (e.g. from /auth/callback redirect)
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const authErr = urlParams.get("auth_error");
+      if (authErr) {
+        setLoginError(decodeURIComponent(authErr));
+        setIsAuthModalOpen(true);
+        // Clean query param
+        urlParams.delete("auth_error");
+        const newSearch = urlParams.toString();
+        const cleanUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "") + window.location.hash;
+        window.history.replaceState(null, "", cleanUrl);
+      }
+    }
+
+    const syncUserProfile = async (
+      u: { id: string; email?: string; user_metadata?: Record<string, unknown>; created_at?: string },
+      token?: string
+    ) => {
+      const email = (u.email || "").toLowerCase().trim();
       const collegeGuess = email.endsWith("@gbu.ac.in")
         ? "Gautam Buddha University"
         : email.includes(".ac.in") || email.includes(".edu")
@@ -129,49 +147,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch {}
 
-      const defaultProfile: UserProfile = {
-        id: u.id,
-        name: u.user_metadata?.full_name || u.user_metadata?.name || email.split("@")[0] || "Developer",
-        email: email,
-        photo: u.user_metadata?.avatar_url || undefined,
-        role: pendingData.role || "Developer",
-        college: pendingData.college || collegeGuess,
-        skills: pendingData.skills?.length ? pendingData.skills : ["React", "Python"],
-        lookingFor: pendingData.lookingFor || "both",
-        bio: pendingData.bio || "",
-        consentAt: new Date().toISOString(),
-        createdAt: u.created_at || new Date().toISOString(),
-      };
-
       try {
         if (token) {
           const fetchRes = await fetch("/api/user", {
             headers: { Authorization: `Bearer ${token}` },
           });
           const fetchData = await fetchRes.json();
-          if (fetchData.success && fetchData.data) {
-            localStorage.setItem("rivq_user", JSON.stringify(fetchData.data));
-            localStorage.setItem("synqsquad_user", JSON.stringify(fetchData.data));
-            notifyAuthChange();
-            if (pendingAction) {
-              pendingAction();
-              setPendingAction(null);
-            }
-            return;
+          const existingProfile: UserProfile | null = fetchData.success && fetchData.data ? fetchData.data : null;
+
+          const meta = (u.user_metadata || {}) as Record<string, string | undefined>;
+          const metaName = meta.full_name || meta.name || "";
+          const metaAvatar = typeof meta.avatar_url === "string" ? meta.avatar_url : undefined;
+
+          const mergedProfile: UserProfile = {
+            id: u.id,
+            name:
+              existingProfile?.name ||
+              metaName ||
+              email.split("@")[0] ||
+              "Developer",
+            email: email,
+            photo: metaAvatar || existingProfile?.photo || undefined,
+            role: pendingData.role || existingProfile?.role || "Developer",
+            college: pendingData.college || existingProfile?.college || collegeGuess,
+            skills: pendingData.skills?.length
+              ? pendingData.skills
+              : existingProfile?.skills?.length
+              ? existingProfile.skills
+              : ["React", "Python"],
+            lookingFor: pendingData.lookingFor || existingProfile?.lookingFor || "both",
+            bio: pendingData.bio ?? (existingProfile?.bio || ""),
+            consentAt: existingProfile?.consentAt || new Date().toISOString(),
+            createdAt: existingProfile?.createdAt || u.created_at || new Date().toISOString(),
+          };
+
+          // If we had pending data or no existing profile was found, persist to Supabase
+          if (Object.keys(pendingData).length > 0 || !existingProfile) {
+            const upsertRes = await fetch("/api/user", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(mergedProfile),
+            });
+            const upsertData = await upsertRes.json();
+            const finalProfile = upsertData.success && upsertData.data ? upsertData.data : mergedProfile;
+            localStorage.setItem("rivq_user", JSON.stringify(finalProfile));
+            localStorage.setItem("synqsquad_user", JSON.stringify(finalProfile));
+          } else {
+            localStorage.setItem("rivq_user", JSON.stringify(existingProfile));
+            localStorage.setItem("synqsquad_user", JSON.stringify(existingProfile));
           }
 
-          const upsertRes = await fetch("/api/user", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(defaultProfile),
-          });
-          const upsertData = await upsertRes.json();
-          const finalProfile = upsertData.success && upsertData.data ? upsertData.data : defaultProfile;
-          localStorage.setItem("rivq_user", JSON.stringify(finalProfile));
-          localStorage.setItem("synqsquad_user", JSON.stringify(finalProfile));
           notifyAuthChange();
           if (pendingAction) {
             pendingAction();
@@ -182,6 +210,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {
         console.error("Profile sync error:", e);
       }
+
+      const fallbackMeta = (u.user_metadata || {}) as Record<string, string | undefined>;
+      const fallbackName = fallbackMeta.full_name || fallbackMeta.name || "";
+      const fallbackAvatar = typeof fallbackMeta.avatar_url === "string" ? fallbackMeta.avatar_url : undefined;
+
+      const defaultProfile: UserProfile = {
+        id: u.id,
+        name: fallbackName || email.split("@")[0] || "Developer",
+        email: email,
+        photo: fallbackAvatar,
+        role: pendingData.role || "Developer",
+        college: pendingData.college || collegeGuess,
+        skills: pendingData.skills?.length ? pendingData.skills : ["React", "Python"],
+        lookingFor: pendingData.lookingFor || "both",
+        bio: pendingData.bio || "",
+        consentAt: new Date().toISOString(),
+        createdAt: u.created_at || new Date().toISOString(),
+      };
 
       try {
         localStorage.setItem("rivq_user", JSON.stringify(defaultProfile));
@@ -194,7 +240,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     };
 
-    // Check active session on mount
+    // 1. Check for Hash fragment tokens (#access_token=... or #error_description=...) from Implicit flow fallback
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hash = window.location.hash.startsWith("#")
+        ? window.location.hash.substring(1)
+        : window.location.hash;
+      const hashParams = new URLSearchParams(hash);
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const errorDesc = hashParams.get("error_description");
+
+      if (errorDesc) {
+        setLoginError(decodeURIComponent(errorDesc.replace(/\+/g, " ")));
+        setIsAuthModalOpen(true);
+      } else if (accessToken) {
+        supabase.auth
+          .setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || "",
+          })
+          .then(({ data, error }) => {
+            if (error) {
+              console.error("setSession error from hash:", error.message);
+              setLoginError(error.message);
+            } else if (data.session?.user) {
+              syncUserProfile(data.session.user, data.session.access_token);
+            }
+          })
+          .finally(() => {
+            // Clean up the hash for a clean, professional address bar
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState(
+                null,
+                "",
+                window.location.pathname + window.location.search
+              );
+            }
+          });
+      }
+    }
+
+    // 2. Check active session on mount
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error("Supabase getSession error:", error.message);
@@ -205,7 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // Listen to auth state transitions (Token refresh, SIGNED_OUT, etc.)
+    // 3. Listen to auth state transitions (Token refresh, SIGNED_OUT, etc.)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {

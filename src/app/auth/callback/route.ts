@@ -38,16 +38,36 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next");
+  const errorDescription = requestUrl.searchParams.get("error_description");
+
+  // Determine origin, accounting for reverse proxies on Vercel or cloud deployments
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const isLocalEnv = process.env.NODE_ENV === "development";
+  const origin = !isLocalEnv && forwardedHost ? `https://${forwardedHost}` : requestUrl.origin;
 
   if (code && isSupabaseServerConfigured()) {
     try {
       const supabase = await createClient();
-      await supabase.auth.exchangeCodeForSession(code);
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        console.error("Auth callback code exchange error:", error.message);
+        return NextResponse.redirect(
+          new URL(`/?auth_error=${encodeURIComponent(error.message)}`, origin)
+        );
+      }
     } catch (err) {
-      console.error("Auth callback code exchange error:", err);
+      console.error("Auth callback code exchange exception:", err);
+      const msg = err instanceof Error ? err.message : "Authentication code exchange failed";
+      return NextResponse.redirect(
+        new URL(`/?auth_error=${encodeURIComponent(msg)}`, origin)
+      );
     }
+  } else if (errorDescription) {
+    return NextResponse.redirect(
+      new URL(`/?auth_error=${encodeURIComponent(errorDescription)}`, origin)
+    );
   }
 
-  const safeRedirect = getSafeRedirectUrl(next, request.url);
+  const safeRedirect = getSafeRedirectUrl(next, origin);
   return NextResponse.redirect(safeRedirect);
 }

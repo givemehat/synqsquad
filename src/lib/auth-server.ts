@@ -47,20 +47,41 @@ export async function getAuthenticatedUser(
       })
     );
 
-    // Standard Supabase cookie formats
+    // Standard Supabase & @supabase/ssr cookie formats (including chunked .0, .1 and base64)
+    const authChunks: { index: number; val: string }[] = [];
+    let singleAuthToken: string | null = null;
+
     for (const [key, val] of Object.entries(cookies)) {
-      if (key.startsWith("sb-") && key.endsWith("-auth-token")) {
-        try {
-          const parsed = JSON.parse(val);
-          if (Array.isArray(parsed) && parsed[0]) token = parsed[0];
-          else if (parsed.access_token) token = parsed.access_token;
-        } catch {
-          token = val;
+      if (key.startsWith("sb-") && key.includes("-auth-token")) {
+        const match = key.match(/-auth-token\.(\d+)$/);
+        if (match) {
+          authChunks.push({ index: parseInt(match[1], 10), val });
+        } else if (key.endsWith("-auth-token")) {
+          singleAuthToken = val;
         }
-        break;
       } else if (key === "sb-access-token") {
         token = val;
         break;
+      }
+    }
+
+    let combinedCookieVal = singleAuthToken;
+    if (authChunks.length > 0) {
+      authChunks.sort((a, b) => a.index - b.index);
+      combinedCookieVal = authChunks.map((c) => c.val).join("");
+    }
+
+    if (!token && combinedCookieVal) {
+      try {
+        let rawJson = combinedCookieVal;
+        if (rawJson.startsWith("base64-")) {
+          rawJson = Buffer.from(rawJson.slice(7), "base64").toString("utf-8");
+        }
+        const parsed = JSON.parse(rawJson);
+        if (Array.isArray(parsed) && parsed[0]) token = parsed[0];
+        else if (parsed.access_token) token = parsed.access_token;
+      } catch {
+        token = combinedCookieVal;
       }
     }
   }
