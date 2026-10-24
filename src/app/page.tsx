@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { Listing, ScreenState } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/Navbar";
@@ -13,7 +14,7 @@ import { CreateListingModal } from "@/components/CreateListingModal";
 import { SuggestMatchesModal } from "@/components/SuggestMatchesModal";
 import { Footer } from "@/components/Footer";
 import { StateView } from "@/components/StateView";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 export default function HomePage() {
   const { user, openAuthModal, blockedUsers } = useAuth();
@@ -31,6 +32,16 @@ export default function HomePage() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSuggestOpen, setIsSuggestOpen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    if (user && typeof window !== "undefined") {
+      if (sessionStorage.getItem("rivq_new_user_welcome") === "true") {
+        setShowWelcome(true);
+        sessionStorage.removeItem("rivq_new_user_welcome");
+      }
+    }
+  }, [user]);
 
   const fetchListings = useCallback(async () => {
     setScreenState("loading");
@@ -207,6 +218,40 @@ export default function HomePage() {
 
         {/* Listings Feed Header & View */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+          {showWelcome && user && (
+            <div className="mb-6 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 font-bold">
+                  🎉
+                </div>
+                <div>
+                  <p className="font-semibold text-[var(--text-primary)]">
+                    Welcome to RIVQ, {user.name.split(" ")[0]}!
+                  </p>
+                  <p className="text-[var(--text-secondary)] mt-0.5">
+                    Your profile is ready. You can customize your skills, college, and squadmate preferences anytime.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <Link
+                  href="/profile"
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs shadow-xs transition-colors"
+                >
+                  Customize Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setShowWelcome(false)}
+                  className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  aria-label="Dismiss banner"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between pb-4 mb-5 border-b border-[var(--border-default)]">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-[var(--text-primary)]">

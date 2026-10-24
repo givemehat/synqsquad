@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Plus, Sun, Moon } from "lucide-react";
+import { Plus, Sun, Moon, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Avatar } from "@/components/Avatar";
@@ -15,7 +15,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ onOpenCreate, onOpenProfile, activeTab, setActiveTab }: NavbarProps) {
-  const { user, openAuthModal } = useAuth();
+  const { user, openAuthModal, signInWithGoogle, isLoggingIn } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
 
   return (
@@ -114,10 +114,18 @@ export function Navbar({ onOpenCreate, onOpenProfile, activeTab, setActiveTab }:
           ) : (
             <button
               type="button"
-              onClick={() => openAuthModal()}
-              className="px-3.5 py-1.5 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white text-xs font-semibold shadow-sm transition-colors min-h-[36px]"
+              onClick={() => signInWithGoogle()}
+              disabled={isLoggingIn}
+              className="px-3.5 py-1.5 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white text-xs font-semibold shadow-sm transition-colors min-h-[36px] flex items-center gap-1.5 cursor-pointer disabled:opacity-75"
             >
-              Sign in with Google
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                <span>Sign in with Google</span>
+              )}
             </button>
           )}
         </div>

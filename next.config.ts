@@ -2,10 +2,6 @@ import type { NextConfig } from "next";
 
 const securityHeaders = [
   {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
-  {
     key: "X-DNS-Prefetch-Control",
     value: "on",
   },
@@ -28,7 +24,7 @@ const securityHeaders = [
   {
     key: "Content-Security-Policy",
     value:
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.unsplash.com https://lh3.googleusercontent.com; font-src 'self'; connect-src 'self' https://mail.google.com https://accounts.google.com https://www.googleapis.com https://*.supabase.co; frame-src https://accounts.google.com; frame-ancestors 'none';",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://images.unsplash.com https://lh3.googleusercontent.com; font-src 'self'; connect-src 'self' http://localhost:* http://127.0.0.1:* https://mail.google.com https://accounts.google.com https://www.googleapis.com https://*.supabase.co wss://*.supabase.co; frame-src https://accounts.google.com; frame-ancestors 'none';",
   },
 ];
 

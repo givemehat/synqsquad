@@ -149,6 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         if (token) {
+          try {
+            localStorage.setItem("rivq_token", token);
+            localStorage.setItem("synqsquad_token", token);
+          } catch {}
+
           const fetchRes = await fetch("/api/user", {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -168,15 +173,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               "Developer",
             email: email,
             photo: metaAvatar || existingProfile?.photo || undefined,
-            role: pendingData.role || existingProfile?.role || "Developer",
+            role: pendingData.role || existingProfile?.role || "Full-Stack Developer",
             college: pendingData.college || existingProfile?.college || collegeGuess,
             skills: pendingData.skills?.length
               ? pendingData.skills
               : existingProfile?.skills?.length
               ? existingProfile.skills
-              : ["React", "Python"],
+              : ["Next.js", "React", "Python"],
             lookingFor: pendingData.lookingFor || existingProfile?.lookingFor || "both",
-            bio: pendingData.bio ?? (existingProfile?.bio || ""),
+            bio: pendingData.bio ?? (existingProfile?.bio || "Passionate about building fast prototypes and high-impact systems."),
             consentAt: existingProfile?.consentAt || new Date().toISOString(),
             createdAt: existingProfile?.createdAt || u.created_at || new Date().toISOString(),
           };
@@ -195,6 +200,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const finalProfile = upsertData.success && upsertData.data ? upsertData.data : mergedProfile;
             localStorage.setItem("rivq_user", JSON.stringify(finalProfile));
             localStorage.setItem("synqsquad_user", JSON.stringify(finalProfile));
+
+            // Automatically sync to /api/people so their squadmate talent profile is live
+            try {
+              const lookingForArr =
+                finalProfile.lookingFor === "both"
+                  ? ["hackathon", "research"]
+                  : finalProfile.lookingFor === "hackathon"
+                  ? ["hackathon"]
+                  : ["research"];
+
+              await fetch("/api/people", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  displayName: finalProfile.name,
+                  headline: `${finalProfile.role} • ${finalProfile.college}`,
+                  skills: finalProfile.skills,
+                  lookingFor: lookingForArr,
+                  experienceLevel: "student",
+                  bio: finalProfile.bio,
+                  availability: "open",
+                  visible: true,
+                }),
+              });
+            } catch (talentErr) {
+              console.error("Auto talent profile creation error:", talentErr);
+            }
+
+            try {
+              sessionStorage.setItem("rivq_new_user_welcome", "true");
+            } catch {}
           } else {
             localStorage.setItem("rivq_user", JSON.stringify(existingProfile));
             localStorage.setItem("synqsquad_user", JSON.stringify(existingProfile));
@@ -425,6 +464,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nextUser),
       }).catch((e) => console.error("Profile sync error:", e));
+
+      const lookingForArr =
+        (nextUser.lookingFor || "both") === "both"
+          ? ["hackathon", "research"]
+          : nextUser.lookingFor === "hackathon"
+          ? ["hackathon"]
+          : ["research"];
+
+      authFetch("/api/people", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: nextUser.name,
+          headline: `${nextUser.role} • ${nextUser.college}`,
+          skills: nextUser.skills,
+          lookingFor: lookingForArr,
+          bio: nextUser.bio,
+          visible: true,
+        }),
+      }).catch((e) => console.error("Talent profile sync error:", e));
     },
     [user]
   );

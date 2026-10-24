@@ -19,8 +19,10 @@ import {
   Sparkles,
   ArrowLeft,
   ArrowRight,
+  Smartphone,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
+import { ConnectOptionsModal } from "@/components/ConnectOptionsModal";
 
 interface ListingDetailDrawerProps {
   listing: Listing | null;
@@ -82,6 +84,8 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [unmaskedEmail, setUnmaskedEmail] = useState<string | null>(null);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copiedTemplate, setCopiedTemplate] = useState(false);
+  const [showConnectModal, setShowConnectModal] = useState(false);
   const [mailtoUrl, setMailtoUrl] = useState<string | null>(null);
   const [gmailComposeUrl, setGmailComposeUrl] = useState<string | null>(null);
 
@@ -201,18 +205,22 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
 
       setGmailComposeUrl(composeUrl);
       setMailtoUrl(fallbackMail);
+      setShowConnectModal(true);
 
-      // 3. Open Gmail in a new tab
-      const win = window.open(composeUrl, "_blank");
-
-      if (!win || win.closed || typeof win.closed === "undefined") {
-        setSuccessNotice(
-          "Gmail popup was blocked by browser. Use the copy button or mailto link below."
-        );
-      } else {
-        setSuccessNotice(
-          "Gmail compose opened in a new tab. Verified contact revealed below and saved to your Contacted list."
-        );
+      // 3. Open Gmail in a new tab if supported
+      try {
+        const win = window.open(composeUrl, "_blank");
+        if (!win || win.closed || typeof win.closed === "undefined") {
+          setSuccessNotice(
+            "Contact revealed. Choose your preferred email client below."
+          );
+        } else {
+          setSuccessNotice(
+            "Gmail compose opened in a new tab. Verified contact revealed below and saved to your Contacted list."
+          );
+        }
+      } catch {
+        setSuccessNotice("Contact revealed. Choose your preferred email client below.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Could not connect to Gmail";
@@ -227,6 +235,14 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
     navigator.clipboard.writeText(unmaskedEmail);
     setCopiedEmail(true);
     setTimeout(() => setCopiedEmail(false), 2000);
+  };
+
+  const handleCopyTemplate = () => {
+    if (!unmaskedEmail) return;
+    const formatted = `To: ${unmaskedEmail}\nSubject: ${customSubject}\n\n${customBody}`;
+    navigator.clipboard.writeText(formatted);
+    setCopiedTemplate(true);
+    setTimeout(() => setCopiedTemplate(false), 2500);
   };
 
   return (
@@ -532,20 +548,23 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
             </div>
           )}
 
-          {/* Unmasked Email Fallbacks (Copy Email & Mailto) */}
+          {/* Unmasked Email Multi-Tiered Action Panel */}
           {unmaskedEmail && (
-            <div className="p-3.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] space-y-2.5 text-xs">
+            <div className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] space-y-3 text-xs">
               <div className="flex items-center justify-between gap-3">
                 <div className="truncate">
-                  <span className="text-[10px] text-[var(--text-tertiary)] block uppercase tracking-wider">
+                  <span className="text-[10px] text-[var(--text-tertiary)] block uppercase tracking-wider font-semibold">
                     Verified Gmail Address
                   </span>
-                  <span className="text-[var(--text-primary)] font-mono font-medium">{unmaskedEmail}</span>
+                  <span className="text-[var(--text-primary)] font-mono font-medium text-xs sm:text-sm select-all">
+                    {unmaskedEmail}
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={handleCopyEmail}
-                  className="px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-overlay)] border border-[var(--border-default)] text-[var(--text-primary)] text-xs font-mono flex items-center gap-1.5 transition-colors min-h-[36px]"
+                  className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-overlay)] border border-[var(--border-default)] text-[var(--text-primary)] text-xs font-mono flex items-center gap-1.5 transition-colors shrink-0"
+                  aria-label="Copy email address"
                 >
                   {copiedEmail ? (
                     <>
@@ -561,33 +580,68 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
                 </button>
               </div>
 
-              {gmailComposeUrl && (
-                <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
-                  <span className="text-[var(--text-tertiary)]">Popup blocked or tab closed?</span>
+              {/* Multi-Tiered Outreach Options */}
+              <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
+                {/* 1. Primary Action: Open in Gmail */}
+                {gmailComposeUrl && (
                   <a
                     href={gmailComposeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[var(--accent-primary)] hover:underline font-medium"
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
                   >
-                    <span>Launch Web Gmail</span>
-                    <ExternalLink className="w-3 h-3" />
+                    <span className="flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Open in Gmail (Web)</span>
+                    </span>
+                    <ExternalLink className="w-3.5 h-3.5 opacity-80" />
                   </a>
-                </div>
-              )}
+                )}
 
-              {mailtoUrl && (
-                <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
-                  <span className="text-[var(--text-tertiary)]">Prefer local mail client?</span>
+                {/* 2. Native Mailto Action: Open in Default Mail App */}
+                {mailtoUrl && (
                   <a
                     href={mailtoUrl}
-                    className="inline-flex items-center gap-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:underline font-medium"
+                    className="w-full flex items-center justify-between p-2.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] text-[var(--text-primary)] font-medium transition-colors"
                   >
-                    <span>Open in Local Mail</span>
-                    <ExternalLink className="w-3 h-3" />
+                    <span className="flex items-center gap-2">
+                      <Smartphone className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                      <span>Open in Default Mail App</span>
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
                   </a>
-                </div>
-              )}
+                )}
+
+                {/* 3. One-Tap Clipboard: Copy Email & Template Message */}
+                <button
+                  type="button"
+                  onClick={handleCopyTemplate}
+                  className="w-full flex items-center justify-between p-2.5 rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-canvas)] text-[var(--text-primary)] font-medium transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    {copiedTemplate ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                    )}
+                    <span>Copy Email & Template Message</span>
+                  </span>
+                  <span className="text-[11px] text-[var(--accent-primary)]">
+                    {copiedTemplate ? "Copied!" : "Copy All"}
+                  </span>
+                </button>
+              </div>
+
+              <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px]">
+                <span className="text-[var(--text-tertiary)]">Need options popup?</span>
+                <button
+                  type="button"
+                  onClick={() => setShowConnectModal(true)}
+                  className="text-[var(--accent-primary)] hover:underline font-medium"
+                >
+                  View connect sheet
+                </button>
+              </div>
             </div>
           )}
 
@@ -657,6 +711,18 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
           </span>
         </div>
       </div>
+
+      {unmaskedEmail && (
+        <ConnectOptionsModal
+          isOpen={showConnectModal}
+          onClose={() => setShowConnectModal(false)}
+          recipientName={listing.ownerName}
+          recipientEmail={unmaskedEmail}
+          subject={customSubject}
+          body={customBody}
+          title={`Connect with ${listing.ownerName}`}
+        />
+      )}
     </div>
   );
 }

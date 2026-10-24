@@ -42,8 +42,13 @@ export async function GET(request: NextRequest) {
 
   // Determine origin, accounting for reverse proxies on Vercel or cloud deployments
   const forwardedHost = request.headers.get("x-forwarded-host");
-  const isLocalEnv = process.env.NODE_ENV === "development";
-  const origin = !isLocalEnv && forwardedHost ? `https://${forwardedHost}` : requestUrl.origin;
+  const host = forwardedHost || request.headers.get("host") || requestUrl.host;
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const isLocalEnv =
+    process.env.NODE_ENV === "development" &&
+    (host.includes("localhost") || host.includes("127.0.0.1"));
+  const proto = forwardedProto || (isLocalEnv ? "http" : "https");
+  const origin = `${proto}://${host}`;
 
   if (code && isSupabaseServerConfigured()) {
     try {
