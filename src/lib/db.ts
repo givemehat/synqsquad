@@ -132,12 +132,11 @@ export async function getListings(
   const viewerEmail = viewerIdOrEmail?.includes("@") ? viewerIdOrEmail.toLowerCase().trim() : undefined;
   const viewerId = viewerIdOrEmail && !viewerIdOrEmail.includes("@") ? viewerIdOrEmail : undefined;
 
-  // Use user client with RLS if token available, else anon client on public view
+  // All directory feed queries query the secure public_listings view (which masks creator emails)
   const supabase = userToken ? getSupabaseUserClient(userToken) : getSupabaseAnonClient();
-  const tableName = authenticated ? "listings" : "public_listings";
 
   const { data, error } = await supabase
-    .from(tableName)
+    .from("public_listings")
     .select("*")
     .neq("status", "hidden")
     .order("created_at", { ascending: false });
@@ -804,9 +803,9 @@ export async function getTalentProfiles(
   const limit = options?.limit || 20;
   const offset = options?.offset || 0;
 
+  // All talent directory feed queries query the secure public_talent_profiles view (granted to all)
   const supabase = userToken ? getSupabaseUserClient(userToken) : getSupabaseAnonClient();
-  const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
-  let query = supabase.from(tableName).select("*", { count: "exact" });
+  let query = supabase.from("public_talent_profiles").select("*", { count: "exact" });
 
   query = query.eq("visible", true).neq("availability", "hidden");
 
@@ -859,8 +858,14 @@ export async function getTalentProfileById(
 ): Promise<TalentProfile | null> {
   if (!isSupabaseServerConfigured()) return null;
 
-  const supabase = userToken ? getSupabaseUserClient(userToken) : getSupabaseAnonClient();
-  const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
+  // Internal server requests without a user token use server client to unmask target email
+  const isInternalServer = authenticated && !userToken;
+  const supabase = userToken
+    ? getSupabaseUserClient(userToken)
+    : isInternalServer
+    ? getSupabaseServerClient()
+    : getSupabaseAnonClient();
+  const tableName = isInternalServer ? "talent_profiles" : "public_talent_profiles";
   const { data, error } = await supabase.from(tableName).select("*").eq("id", id).maybeSingle();
 
   if (error || !data) return null;

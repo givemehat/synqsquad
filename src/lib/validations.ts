@@ -29,7 +29,9 @@ export function sanitizeText(input: string): string {
   if (!input) return "";
   return input
     .replace(/\0/g, "") // Null bytes
-    .replace(/[<>]/g, "") // Angle brackets
+    .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, "$1") // Strip script tag wrappers
+    .replace(/<[^>]+>/g, "") // Strip any HTML tags completely
+    .replace(/[<>]/g, "") // Neutralize residual angle brackets
     .replace(/javascript:/gi, "")
     .replace(/vbscript:/gi, "")
     .replace(/data:text\/html/gi, "")

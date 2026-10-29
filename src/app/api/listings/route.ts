@@ -3,6 +3,7 @@ import { getListings, createListing, maskEmail } from "@/lib/db";
 import { ListingType } from "@/types";
 import { validateListingInput } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/auth-server";
+import { safeParseJson } from "@/lib/api-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     const viewerId = auth.user?.id;
     const isAuth = Boolean(auth.user);
 
-    let listings = await getListings(isAuth, viewerId);
+    let listings = await getListings(isAuth, viewerId, auth.token);
 
     if (type && type !== "all") {
       listings = listings.filter((l) => l.type === (type as ListingType));
@@ -42,10 +43,10 @@ export async function GET(request: NextRequest) {
 
     // Strict privacy: only the authenticated creator of a specific listing sees their own email unmasked
     const sanitizedListings = listings.map((l) => {
-      const isOwner = viewerId && l.ownerId === viewerId;
+      const isOwner = Boolean(viewerId && l.ownerId === viewerId);
       return {
         ...l,
-        ownerEmail: isOwner ? l.ownerEmail : (l.ownerEmail.includes("••") ? l.ownerEmail : maskEmail(l.ownerEmail)),
+        ownerEmail: isOwner && auth.user?.email ? auth.user.email : (l.ownerEmail.includes("••") ? l.ownerEmail : maskEmail(l.ownerEmail)),
       };
     });
 
@@ -65,6 +66,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const jsonResult = await safeParseJson(request);
+    if (!jsonResult.success) {
+      return jsonResult.response;
+    }
+    const rawBody: unknown = jsonResult.data;
+
     // 1. Strict Identity Check: Caller must provide verified Supabase session token
     const auth = await getAuthenticatedUser(request);
     if (!auth.user) {
@@ -73,8 +80,6 @@ export async function POST(request: NextRequest) {
         { status: auth.status }
       );
     }
-
-    const rawBody: unknown = await request.json();
 
     // Ensure ownerEmail, ownerId, and ownerName match verified identity
     const payloadWithIdentity = typeof rawBody === "object" && rawBody !== null

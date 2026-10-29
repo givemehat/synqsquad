@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBlockedUsers, blockUser, unblockUser } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/auth-server";
+import { safeParseJson } from "@/lib/api-helpers";
 
 export async function GET(request: NextRequest) {
   // 1. Authenticate caller strictly via verified session JWT
@@ -23,6 +24,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const jsonResult = await safeParseJson<{ blockedEmail?: string }>(request);
+    if (!jsonResult.success) {
+      return jsonResult.response;
+    }
+    const body = jsonResult.data;
+
     // 1. Authenticate caller strictly via verified session JWT
     const auth = await getAuthenticatedUser(request);
     if (!auth.user) {
@@ -31,8 +38,6 @@ export async function POST(request: NextRequest) {
         { status: auth.status }
       );
     }
-
-    const body = await request.json();
     const { blockedEmail } = body;
 
     if (!blockedEmail) {

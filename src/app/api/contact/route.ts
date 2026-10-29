@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { recordContact, getContactedListings, getListingById } from "@/lib/db";
 import { contactInputSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/auth-server";
+import { safeParseJson } from "@/lib/api-helpers";
 
 export async function POST(request: NextRequest) {
   try {
+    const jsonResult = await safeParseJson(request);
+    if (!jsonResult.success) {
+      return jsonResult.response;
+    }
+    const rawBody: unknown = jsonResult.data;
+
     // 1. Authenticate caller strictly via verified session JWT
     const auth = await getAuthenticatedUser(request);
     if (!auth.user) {
@@ -13,8 +20,6 @@ export async function POST(request: NextRequest) {
         { status: auth.status }
       );
     }
-
-    const rawBody: unknown = await request.json();
     const payloadWithUser =
       typeof rawBody === "object" && rawBody !== null
         ? {

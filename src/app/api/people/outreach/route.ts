@@ -7,6 +7,7 @@ import {
 } from "@/lib/db";
 import { validateOutreachInput } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/auth-server";
+import { safeParseJson } from "@/lib/api-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,6 +33,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const jsonResult = await safeParseJson(request);
+    if (!jsonResult.success) {
+      return jsonResult.response;
+    }
+    const rawBody: unknown = jsonResult.data;
+
     const auth = await getAuthenticatedUser(request);
     if (!auth.user) {
       return NextResponse.json(
@@ -39,8 +46,6 @@ export async function POST(request: NextRequest) {
         { status: auth.status }
       );
     }
-
-    const rawBody: unknown = await request.json();
     const validation = validateOutreachInput(rawBody);
 
     if (!validation.success || !validation.data) {

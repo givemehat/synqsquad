@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTalentProfiles, upsertTalentProfile } from "@/lib/db";
 import { validateTalentProfileInput } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/auth-server";
+import { safeParseJson } from "@/lib/api-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,15 +20,20 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
     const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10));
 
-    const result = await getTalentProfiles(isAuthenticated, viewerEmail, {
-      skills,
-      lookingFor,
-      experienceLevel,
-      availability,
-      search,
-      limit,
-      offset,
-    });
+    const result = await getTalentProfiles(
+      isAuthenticated,
+      viewerEmail,
+      {
+        skills,
+        lookingFor,
+        experienceLevel,
+        availability,
+        search,
+        limit,
+        offset,
+      },
+      auth.token
+    );
 
     return NextResponse.json({
       success: true,
@@ -43,6 +49,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const jsonResult = await safeParseJson(request);
+    if (!jsonResult.success) {
+      return jsonResult.response;
+    }
+    const rawBody: unknown = jsonResult.data;
+
     const auth = await getAuthenticatedUser(request);
     if (!auth.user) {
       return NextResponse.json(
@@ -50,8 +62,6 @@ export async function POST(request: NextRequest) {
         { status: auth.status }
       );
     }
-
-    const rawBody: unknown = await request.json();
     const validation = validateTalentProfileInput(rawBody);
 
     if (!validation.success || !validation.data) {

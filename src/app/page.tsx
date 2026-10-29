@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Listing, ScreenState } from "@/types";
 import { useAuth } from "@/context/AuthContext";
+import { authFetch } from "@/lib/api-client";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
 import { ListingCard } from "@/components/ListingCard";
@@ -49,7 +50,7 @@ export default function HomePage() {
 
     try {
       const isAuthParam = user ? "true" : "false";
-      const res = await fetch(`/api/listings?auth=${isAuthParam}`);
+      const res = await authFetch(`/api/listings?auth=${isAuthParam}`);
       if (!res.ok) {
         throw new Error(`Server returned status ${res.status}`);
       }

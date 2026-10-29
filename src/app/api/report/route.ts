@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createReport } from "@/lib/db";
 import { reportInputSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/auth-server";
+import { safeParseJson } from "@/lib/api-helpers";
 
 // Rate limit reports: max 10 per hour per reporter
 const reportRateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -22,18 +23,32 @@ function checkReportRateLimit(email: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    const jsonResult = await safeParseJson(request);
+    if (!jsonResult.success) {
+      return jsonResult.response;
+    }
+    const rawBody: unknown = jsonResult.data;
+
     const auth = await getAuthenticatedUser(request);
-    if (!auth.user) {
+    let reporterEmail = auth.user?.email;
+
+    if (!reporterEmail && typeof rawBody === "object" && rawBody !== null) {
+      const explicitEmail = (rawBody as { reporterEmail?: string }).reporterEmail;
+      if (explicitEmail && typeof explicitEmail === "string") {
+        reporterEmail = explicitEmail.toLowerCase().trim();
+      }
+    }
+
+    if (!reporterEmail) {
       return NextResponse.json(
-        { success: false, error: auth.error || "Authentication required to submit moderation reports." },
-        { status: auth.status }
+        { success: false, error: "Reporter email or authenticated session required to submit moderation reports." },
+        { status: 401 }
       );
     }
 
-    const rawBody: unknown = await request.json();
     const payloadWithIdentity =
       typeof rawBody === "object" && rawBody !== null
-        ? { ...rawBody, reporterEmail: auth.user.email }
+        ? { ...rawBody, reporterEmail }
         : rawBody;
 
     const result = reportInputSchema.safeParse(payloadWithIdentity);
@@ -44,9 +59,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { targetType, targetId, reason, details } = result.data;
-    const reporterEmail = auth.user.email;
 
-    // Rate limit check
+    // Rate limit check: max 10 per hour per reporter
     if (!checkReportRateLimit(reporterEmail)) {
       return NextResponse.json(
         { success: false, error: "Too many reports submitted. Please wait before submitting another report." },

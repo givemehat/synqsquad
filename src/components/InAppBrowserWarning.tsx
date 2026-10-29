@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, Copy, Check, ExternalLink, X, Share2, MoreVertical } from "lucide-react";
+import { AlertTriangle, Copy, Check, X, Share2, MoreVertical } from "lucide-react";
 import { detectInAppBrowser, InAppBrowserInfo } from "@/lib/browser-detect";
 
 export function InAppBrowserWarning() {

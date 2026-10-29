@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTalentProfileById, updateTalentProfileVisibility, deleteTalentProfile } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/auth-server";
 import { z } from "zod";
+import { safeParseJson } from "@/lib/api-helpers";
 
 export async function GET(
   request: NextRequest,
@@ -43,6 +44,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const jsonResult = await safeParseJson(request);
+    if (!jsonResult.success) {
+      return jsonResult.response;
+    }
+    const body: unknown = jsonResult.data;
+
     const { id } = await params;
     const auth = await getAuthenticatedUser(request);
     if (!auth.user) {
@@ -65,7 +72,6 @@ export async function PATCH(
       );
     }
 
-    const body: unknown = await request.json();
     const parsed = updateVisibilitySchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

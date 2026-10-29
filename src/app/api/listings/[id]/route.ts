@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getListingById, updateListingStatus, deleteListing, maskEmail } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/auth-server";
+import { safeParseJson } from "@/lib/api-helpers";
 
 export async function GET(
   request: NextRequest,
@@ -40,6 +41,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const jsonResult = await safeParseJson<{ status?: "open" | "filled" | "renew" }>(request);
+    if (!jsonResult.success) {
+      return jsonResult.response;
+    }
+    const body = jsonResult.data;
+
     // 1. Authenticate caller strictly via verified session JWT
     const auth = await getAuthenticatedUser(request);
     if (!auth.user) {
@@ -50,7 +57,6 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const body = (await request.json()) as { status?: "open" | "filled" | "renew" };
 
     if (!body.status || !["open", "filled", "renew"].includes(body.status)) {
       return NextResponse.json(

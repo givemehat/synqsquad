@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { improveMessageSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/auth-server";
 import { checkAiRateLimitDb } from "@/lib/db";
+import { safeParseJson } from "@/lib/api-helpers";
 
 export async function POST(request: NextRequest) {
   try {
+    const jsonResult = await safeParseJson(request);
+    if (!jsonResult.success) {
+      return jsonResult.response;
+    }
+    const rawBody: unknown = jsonResult.data;
+
     // 1. Strict Identity Check: Signed-in callers only
     const auth = await getAuthenticatedUser(request);
     if (!auth.user) {
@@ -17,8 +24,6 @@ export async function POST(request: NextRequest) {
         { status: auth.status }
       );
     }
-
-    const rawBody: unknown = await request.json();
     const payloadWithIdentity =
       typeof rawBody === "object" && rawBody !== null
         ? { ...rawBody, userEmail: auth.user.email }
