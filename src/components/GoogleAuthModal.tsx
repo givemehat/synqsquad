@@ -11,6 +11,8 @@ import {
   AlertCircle,
   RefreshCw,
   Loader2,
+  Sparkles,
+  UserCheck,
 } from "lucide-react";
 
 const ROLES = [
@@ -54,6 +56,10 @@ export function GoogleAuthModal() {
     closeAuthModal,
     signInWithGoogle,
     updateProfile,
+    completeOnboarding,
+    isFirstTimeUser,
+    authMode,
+    setAuthMode,
     isLoggingIn,
     loginError,
     retryLogin,
@@ -62,13 +68,10 @@ export function GoogleAuthModal() {
   const [step, setStep] = useState<"signin" | "profile">("signin");
   const [role, setRole] = useState("Full-Stack Developer");
   const [college, setCollege] = useState("");
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([
-    "Next.js",
-    "TypeScript",
-    "Python",
-  ]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [lookingFor, setLookingFor] = useState<"hackathon" | "research" | "both">("both");
   const [bio, setBio] = useState("");
+  const [skillValidationNotice, setSkillValidationNotice] = useState(false);
 
   // Custom Role Dropdown state
   const [isRoleOpen, setIsRoleOpen] = useState(false);
@@ -84,10 +87,19 @@ export function GoogleAuthModal() {
   useEffect(() => {
     if (!isAuthModalOpen) {
       setIsRoleOpen(false);
+      setSkillValidationNotice(false);
       return;
     }
 
-    if (user) {
+    if (isFirstTimeUser) {
+      // First-time user onboarding: prompt user to configure genuine details
+      setStep("profile");
+      setSelectedSkills([]);
+      if (user?.college && user.college !== "Independent" && user.college !== "University") {
+        setCollege(user.college);
+      }
+    } else if (user && user.role && user.skills?.length) {
+      // Existing user editing their profile
       if (user.role) setRole(user.role);
       if (user.college && user.college !== "Independent") setCollege(user.college);
       if (user.skills?.length) setSelectedSkills(user.skills);
@@ -97,8 +109,9 @@ export function GoogleAuthModal() {
     } else {
       // Default initial step for unauthenticated visitors
       setStep("signin");
+      setSelectedSkills([]);
     }
-  }, [isAuthModalOpen, user]);
+  }, [isAuthModalOpen, user, isFirstTimeUser]);
 
   // Click-outside listener for Role Dropdown
   useEffect(() => {
@@ -157,6 +170,7 @@ export function GoogleAuthModal() {
   }, [isAuthModalOpen, isRoleOpen, closeAuthModal]);
 
   const toggleSkill = (skill: string) => {
+    setSkillValidationNotice(false);
     setSelectedSkills((prev) => {
       if (prev.includes(skill)) {
         return prev.filter((s) => s !== skill);
@@ -202,10 +216,25 @@ export function GoogleAuthModal() {
   const handleFinishProfile = async () => {
     if (isSaveDisabled) return;
 
+    if (selectedSkills.length === 0) {
+      setSkillValidationNotice(true);
+      return;
+    }
+
     const finalRole = role.trim() || "Full-Stack Developer";
     const finalCollege = college.trim() || "Independent";
-    const finalSkills =
-      selectedSkills.length > 0 ? selectedSkills : ["Next.js", "React", "Python"];
+    const finalSkills = selectedSkills;
+
+    if (isFirstTimeUser) {
+      await completeOnboarding({
+        role: finalRole,
+        college: finalCollege,
+        skills: finalSkills,
+        lookingFor,
+        bio: bio.trim(),
+      });
+      return;
+    }
 
     if (user) {
       // User is already authenticated: update their profile in Supabase directly
@@ -234,6 +263,16 @@ export function GoogleAuthModal() {
   };
 
   const handleSkip = async () => {
+    if (isFirstTimeUser && user) {
+      await completeOnboarding({
+        role: role.trim() || "Developer",
+        college: college.trim() || "Independent",
+        skills: selectedSkills.length > 0 ? selectedSkills : ["Software Engineering"],
+        lookingFor,
+        bio: bio.trim(),
+      });
+      return;
+    }
     if (user) {
       closeAuthModal();
       return;
@@ -245,6 +284,8 @@ export function GoogleAuthModal() {
   };
 
   if (!isAuthModalOpen) return null;
+
+  const isSignUp = authMode === "signup";
 
   return (
     <div
@@ -280,12 +321,22 @@ export function GoogleAuthModal() {
                 id="auth-modal-title"
                 className="text-base sm:text-lg font-bold text-[var(--text-primary)] tracking-tight"
               >
-                {step === "signin" ? "Sign in to RIVQ" : "Complete your profile"}
+                {step === "signin"
+                  ? isSignUp
+                    ? "Create your RIVQ Account"
+                    : "Sign in to RIVQ"
+                  : isFirstTimeUser
+                  ? "Welcome! Complete your profile"
+                  : "Complete your profile"}
               </h2>
             </div>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
               {step === "signin"
-                ? "Verified Google accounts only. Collaborators connect directly on Gmail."
+                ? isSignUp
+                  ? "Join hackathon squads and research collaborations on verified Gmail."
+                  : "Verified Google accounts only. Collaborators connect directly on Gmail."
+                : isFirstTimeUser
+                ? "Select your genuine skills & background. Zero auto-generated fake data."
                 : "Help teammates understand your background when connecting on Gmail."}
             </p>
           </div>
@@ -294,7 +345,7 @@ export function GoogleAuthModal() {
             type="button"
             onClick={closeAuthModal}
             aria-label="Close modal"
-            className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center shrink-0 ml-2"
+            className="p-1.5 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center shrink-0 ml-2 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -321,15 +372,51 @@ export function GoogleAuthModal() {
           </div>
         )}
 
-        {/* Step: Sign In View */}
+        {/* Step: Sign In / Sign Up View */}
         {step === "signin" ? (
           <div className="p-5 sm:p-6 space-y-5 flex-1 overflow-y-auto">
+            {/* Mode Switcher Tabs: Sign In vs Sign Up */}
+            <div className="p-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] grid grid-cols-2 gap-1">
+              <button
+                type="button"
+                onClick={() => setAuthMode("signin")}
+                className={`h-[36px] px-3 rounded-lg text-xs font-medium transition-all flex items-center justify-center cursor-pointer ${
+                  !isSignUp
+                    ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm border border-[var(--border-default)]"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode("signup")}
+                className={`h-[36px] px-3 rounded-lg text-xs font-medium transition-all flex items-center justify-center cursor-pointer ${
+                  isSignUp
+                    ? "bg-[var(--accent-primary)] text-white shadow-sm"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
+
             <div className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+                <UserCheck className="w-4 h-4 text-blue-500 shrink-0" />
+                <span>
+                  {isSignUp
+                    ? "New Member Account Creation"
+                    : "Automatic Account Detection"}
+                </span>
+              </div>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                RIVQ is designed for genuine students, developers, and researchers. Direct peer-to-peer contact on Gmail with zero chat spam.
+                {isSignUp
+                  ? "First-time users choose their genuine role and skills during onboarding. Returning users signing in are automatically recognized with no data lost."
+                  : "If you have an existing account with this Google email, you'll be signed right in. New users are guided through onboarding steps."}
               </p>
               <p className="text-[11px] text-[var(--text-tertiary)]">
-                Your email is strictly protected behind masked privacy cards until mutual contact.
+                Email addresses are masked until mutual connect acceptance.
               </p>
             </div>
 
@@ -364,7 +451,9 @@ export function GoogleAuthModal() {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                     />
                   </svg>
-                  <span>Continue with Google</span>
+                  <span>
+                    {isSignUp ? "Sign up with Google" : "Continue with Google"}
+                  </span>
                 </>
               )}
             </button>
@@ -384,9 +473,18 @@ export function GoogleAuthModal() {
             </p>
           </div>
         ) : (
-          /* Step: Quick Profile Setup View */
+          /* Step: Quick Profile Setup & Onboarding View */
           <>
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 overscroll-contain">
+              {isFirstTimeUser && (
+                <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-center gap-2.5 text-xs text-blue-600 dark:text-blue-400">
+                  <Sparkles className="w-4 h-4 shrink-0" />
+                  <span>
+                    New account detected! Please pick your relevant role and skills below.
+                  </span>
+                </div>
+              )}
+
               {/* Section 1: Role Dropdown */}
               <div className="space-y-1.5" ref={roleDropdownRef}>
                 <label className="text-xs font-medium text-[var(--text-secondary)] block">
@@ -517,6 +615,12 @@ export function GoogleAuthModal() {
                     </span>
                   </div>
                 </div>
+
+                {skillValidationNotice && (
+                  <p className="text-xs text-rose-500 dark:text-rose-400 font-medium">
+                    Please select at least 1 relevant skill to complete your profile.
+                  </p>
+                )}
 
                 <div className="space-y-3 pt-1">
                   {SKILL_GROUPS.map((group) => (

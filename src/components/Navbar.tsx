@@ -15,7 +15,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ onOpenCreate, onOpenProfile, activeTab, setActiveTab }: NavbarProps) {
-  const { user, openAuthModal, signInWithGoogle, isLoggingIn } = useAuth();
+  const { user, openAuthModal, isLoggingIn } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
 
   return (
@@ -88,7 +88,7 @@ export function Navbar({ onOpenCreate, onOpenProfile, activeTab, setActiveTab }:
             type="button"
             onClick={() => {
               if (!user) {
-                openAuthModal(() => onOpenCreate());
+                openAuthModal(() => onOpenCreate(), "signin");
               } else {
                 onOpenCreate();
               }
@@ -99,7 +99,7 @@ export function Navbar({ onOpenCreate, onOpenProfile, activeTab, setActiveTab }:
             <span>Post</span>
           </button>
 
-          {/* User Profile or Google Sign In */}
+          {/* User Profile or Sign In / Sign Up */}
           {user ? (
             <button
               type="button"
@@ -112,21 +112,31 @@ export function Navbar({ onOpenCreate, onOpenProfile, activeTab, setActiveTab }:
               <Avatar src={user.photo} name={user.name} size={24} />
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={() => signInWithGoogle()}
-              disabled={isLoggingIn}
-              className="px-3.5 py-1.5 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white text-xs font-semibold shadow-sm transition-colors min-h-[36px] flex items-center gap-1.5 cursor-pointer disabled:opacity-75"
-            >
-              {isLoggingIn ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Signing in...</span>
-                </>
-              ) : (
-                <span>Sign in with Google</span>
-              )}
-            </button>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <button
+                type="button"
+                onClick={() => openAuthModal(undefined, "signin")}
+                disabled={isLoggingIn}
+                className="px-2.5 sm:px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] text-xs font-medium border border-transparent transition-colors min-h-[36px] cursor-pointer"
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuthModal(undefined, "signup")}
+                disabled={isLoggingIn}
+                className="px-3 sm:px-3.5 py-1.5 rounded-lg bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white text-xs font-semibold shadow-sm transition-colors min-h-[36px] flex items-center gap-1.5 cursor-pointer disabled:opacity-75"
+              >
+                {isLoggingIn ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <span>Sign Up</span>
+                )}
+              </button>
+            </div>
           )}
         </div>
       </div>

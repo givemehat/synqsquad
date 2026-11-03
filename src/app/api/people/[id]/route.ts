@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTalentProfileById, updateTalentProfileVisibility, deleteTalentProfile } from "@/lib/db";
+import { getTalentProfileById, updateTalentProfileVisibility, deleteTalentProfile, maskEmail } from "@/lib/db";
 import { getAuthenticatedUser } from "@/lib/auth-server";
 import { z } from "zod";
 import { safeParseJson } from "@/lib/api-helpers";
@@ -14,7 +14,7 @@ export async function GET(
     const isAuthenticated = Boolean(auth.user);
     const viewerEmail = auth.user?.email;
 
-    const profile = await getTalentProfileById(id, isAuthenticated, viewerEmail);
+    const profile = await getTalentProfileById(id, isAuthenticated, viewerEmail, auth.token);
     if (!profile) {
       return NextResponse.json(
         { success: false, error: "Talent profile not found or unavailable." },
@@ -22,9 +22,16 @@ export async function GET(
       );
     }
 
+    // Strict privacy: Only the profile owner can see their own unmasked email!
+    const isOwner = Boolean(auth.user && profile.userId === auth.user.id);
+    const sanitizedProfile = {
+      ...profile,
+      email: isOwner ? profile.email : maskEmail(profile.email),
+    };
+
     return NextResponse.json({
       success: true,
-      data: profile,
+      data: sanitizedProfile,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to load talent profile";

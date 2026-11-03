@@ -12,16 +12,29 @@ import { UserProfile } from "@/types";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "@/lib/supabase-browser";
 import { authFetch } from "@/lib/api-client";
 
+export type AuthMode = "signin" | "signup";
+
 interface AuthContextType {
   user: UserProfile | null;
   isAuthModalOpen: boolean;
   isLoggingIn: boolean;
   loginError: string | null;
-  openAuthModal: (returnAction?: () => void) => void;
+  authMode: AuthMode;
+  setAuthMode: (mode: AuthMode) => void;
+  openAuthModal: (returnAction?: () => void, initialMode?: AuthMode) => void;
   closeAuthModal: () => void;
   signInWithGoogle: (profileData?: Partial<UserProfile>) => Promise<boolean>;
   signOut: () => Promise<void>;
   updateProfile: (updated: Partial<UserProfile>) => void;
+  completeOnboarding: (data: {
+    role: string;
+    college: string;
+    skills: string[];
+    lookingFor: "hackathon" | "research" | "both";
+    bio: string;
+  }) => Promise<boolean>;
+  isFirstTimeUser: boolean;
+  setIsFirstTimeUser: (isFirst: boolean) => void;
   contactedList: string[];
   addContactedId: (id: string) => void;
   retryLogin: () => void;
@@ -102,6 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const blockedUsers: string[] = blockedJson ? JSON.parse(blockedJson) : [];
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("signin");
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
@@ -138,132 +153,161 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? "University"
         : "Independent";
 
-      let pendingData: Partial<UserProfile> = {};
-      try {
-        const storedPending = localStorage.getItem("rivq_pending_profile");
-        if (storedPending) {
-          pendingData = JSON.parse(storedPending);
-          localStorage.removeItem("rivq_pending_profile");
-        }
-      } catch {}
+      if (token) {
+        try {
+          localStorage.setItem("rivq_token", token);
+          localStorage.setItem("synqsquad_token", token);
+        } catch {}
 
-      try {
-        if (token) {
-          try {
-            localStorage.setItem("rivq_token", token);
-            localStorage.setItem("synqsquad_token", token);
-          } catch {}
-
+        try {
+          // Check if an existing profile exists in the database
           const fetchRes = await fetch("/api/user", {
             headers: { Authorization: `Bearer ${token}` },
           });
           const fetchData = await fetchRes.json();
-          const existingProfile: UserProfile | null = fetchData.success && fetchData.data ? fetchData.data : null;
+          const existingProfile: UserProfile | null =
+            fetchData.success && fetchData.data && fetchData.data.id ? fetchData.data : null;
 
+          // 1. RETURNING USER AUTO-DETECTION:
+          // If existing profile exists with configured role or skills, log in immediately!
+          if (
+            existingProfile &&
+            existingProfile.role &&
+            existingProfile.skills &&
+            existingProfile.skills.length > 0
+          ) {
+            localStorage.setItem("rivq_user", JSON.stringify(existingProfile));
+            localStorage.setItem("synqsquad_user", JSON.stringify(existingProfile));
+            setIsFirstTimeUser(false);
+            setIsAuthModalOpen(false);
+            notifyAuthChange();
+            if (pendingAction) {
+              pendingAction();
+              setPendingAction(null);
+            }
+            return;
+          }
+
+          // 2. FIRST-TIME USER AUTO-DETECTION:
+          // Zero fake data auto-filling! We do NOT write fake defaults to the database.
+          // Instead, construct genuine Google session draft and prompt user through onboarding steps.
           const meta = (u.user_metadata || {}) as Record<string, string | undefined>;
           const metaName = meta.full_name || meta.name || "";
           const metaAvatar = typeof meta.avatar_url === "string" ? meta.avatar_url : undefined;
 
-          const mergedProfile: UserProfile = {
-            id: u.id,
-            name:
-              existingProfile?.name ||
-              metaName ||
-              email.split("@")[0] ||
-              "Developer",
-            email: email,
-            photo: metaAvatar || existingProfile?.photo || undefined,
-            role: pendingData.role || existingProfile?.role || "Full-Stack Developer",
-            college: pendingData.college || existingProfile?.college || collegeGuess,
-            skills: pendingData.skills?.length
-              ? pendingData.skills
-              : existingProfile?.skills?.length
-              ? existingProfile.skills
-              : ["Next.js", "React", "Python"],
-            lookingFor: pendingData.lookingFor || existingProfile?.lookingFor || "both",
-            bio: pendingData.bio ?? (existingProfile?.bio || "Passionate about building fast prototypes and high-impact systems."),
-            consentAt: existingProfile?.consentAt || new Date().toISOString(),
-            createdAt: existingProfile?.createdAt || u.created_at || new Date().toISOString(),
-          };
+          // Check if user pre-selected values before signing in (from onboarding modal)
+          let pendingData: Partial<UserProfile> = {};
+          try {
+            const storedPending = localStorage.getItem("rivq_pending_profile");
+            if (storedPending) {
+              pendingData = JSON.parse(storedPending);
+              localStorage.removeItem("rivq_pending_profile");
+            }
+          } catch {}
 
-          // If we had pending data or no existing profile was found, persist to Supabase
-          if (Object.keys(pendingData).length > 0 || !existingProfile) {
-            const upsertRes = await fetch("/api/user", {
+          if (pendingData.role && pendingData.skills && pendingData.skills.length > 0) {
+            // User intentionally configured their profile during onboarding before Google OAuth:
+            const realProfile: UserProfile = {
+              id: u.id,
+              name: metaName || email.split("@")[0] || "Collaborator",
+              email: email,
+              photo: metaAvatar,
+              role: pendingData.role,
+              college: pendingData.college || collegeGuess,
+              skills: pendingData.skills,
+              lookingFor: pendingData.lookingFor || "both",
+              bio: pendingData.bio || "",
+              consentAt: new Date().toISOString(),
+              createdAt: u.created_at || new Date().toISOString(),
+            };
+
+            await fetch("/api/user", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify(mergedProfile),
+              body: JSON.stringify(realProfile),
             });
-            const upsertData = await upsertRes.json();
-            const finalProfile = upsertData.success && upsertData.data ? upsertData.data : mergedProfile;
-            localStorage.setItem("rivq_user", JSON.stringify(finalProfile));
-            localStorage.setItem("synqsquad_user", JSON.stringify(finalProfile));
 
-            // Automatically sync to /api/people so their squadmate talent profile is live
-            try {
-              const lookingForArr =
-                finalProfile.lookingFor === "both"
-                  ? ["hackathon", "research"]
-                  : finalProfile.lookingFor === "hackathon"
-                  ? ["hackathon"]
-                  : ["research"];
+            const lookingForArr =
+              realProfile.lookingFor === "both"
+                ? ["hackathon", "research"]
+                : realProfile.lookingFor === "hackathon"
+                ? ["hackathon"]
+                : ["research"];
 
-              await fetch("/api/people", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                  displayName: finalProfile.name,
-                  headline: `${finalProfile.role} • ${finalProfile.college}`,
-                  skills: finalProfile.skills,
-                  lookingFor: lookingForArr,
-                  experienceLevel: "student",
-                  bio: finalProfile.bio,
-                  availability: "open",
-                  visible: true,
-                }),
-              });
-            } catch (talentErr) {
-              console.error("Auto talent profile creation error:", talentErr);
+            await fetch("/api/people", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                displayName: realProfile.name,
+                headline: `${realProfile.role} • ${realProfile.college}`,
+                skills: realProfile.skills,
+                lookingFor: lookingForArr,
+                experienceLevel: "student",
+                bio: realProfile.bio,
+                availability: "open",
+                visible: true,
+              }),
+            }).catch(() => {});
+
+            localStorage.setItem("rivq_user", JSON.stringify(realProfile));
+            localStorage.setItem("synqsquad_user", JSON.stringify(realProfile));
+            setIsFirstTimeUser(false);
+            setIsAuthModalOpen(false);
+            notifyAuthChange();
+            if (pendingAction) {
+              pendingAction();
+              setPendingAction(null);
             }
-
-            try {
-              sessionStorage.setItem("rivq_new_user_welcome", "true");
-            } catch {}
-          } else {
-            localStorage.setItem("rivq_user", JSON.stringify(existingProfile));
-            localStorage.setItem("synqsquad_user", JSON.stringify(existingProfile));
+            return;
           }
 
+          // Otherwise, user is a first-time user who signed in directly without onboarding yet:
+          const draftProfile: UserProfile = {
+            id: u.id,
+            name: metaName || email.split("@")[0] || "Collaborator",
+            email: email,
+            photo: metaAvatar,
+            role: "",
+            college: collegeGuess !== "Independent" ? collegeGuess : "",
+            skills: [],
+            lookingFor: "both",
+            bio: "",
+            consentAt: new Date().toISOString(),
+            createdAt: u.created_at || new Date().toISOString(),
+          };
+
+          localStorage.setItem("rivq_user", JSON.stringify(draftProfile));
+          localStorage.setItem("synqsquad_user", JSON.stringify(draftProfile));
+          setIsFirstTimeUser(true);
+          setIsAuthModalOpen(true);
           notifyAuthChange();
-          if (pendingAction) {
-            pendingAction();
-            setPendingAction(null);
-          }
           return;
+        } catch (fetchErr) {
+          console.error("Profile sync fetch error:", fetchErr);
         }
-      } catch (e) {
-        console.error("Profile sync error:", e);
       }
 
+      // Offline / fallback path
       const fallbackMeta = (u.user_metadata || {}) as Record<string, string | undefined>;
       const fallbackName = fallbackMeta.full_name || fallbackMeta.name || "";
       const fallbackAvatar = typeof fallbackMeta.avatar_url === "string" ? fallbackMeta.avatar_url : undefined;
 
       const defaultProfile: UserProfile = {
         id: u.id,
-        name: fallbackName || email.split("@")[0] || "Developer",
+        name: fallbackName || email.split("@")[0] || "Collaborator",
         email: email,
         photo: fallbackAvatar,
-        role: pendingData.role || "Developer",
-        college: pendingData.college || collegeGuess,
-        skills: pendingData.skills?.length ? pendingData.skills : ["React", "Python"],
-        lookingFor: pendingData.lookingFor || "both",
-        bio: pendingData.bio || "",
+        role: "",
+        college: collegeGuess,
+        skills: [],
+        lookingFor: "both",
+        bio: "",
         consentAt: new Date().toISOString(),
         createdAt: u.created_at || new Date().toISOString(),
       };
@@ -271,6 +315,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.setItem("rivq_user", JSON.stringify(defaultProfile));
         localStorage.setItem("synqsquad_user", JSON.stringify(defaultProfile));
+        setIsFirstTimeUser(true);
         notifyAuthChange();
         if (pendingAction) {
           pendingAction();
@@ -338,6 +383,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           localStorage.removeItem("rivq_user");
           localStorage.removeItem("synqsquad_user");
+          setIsFirstTimeUser(false);
           notifyAuthChange();
         } catch {}
       } else if (event === "TOKEN_REFRESHED" && session?.user) {
@@ -352,9 +398,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user, pendingAction]);
 
-  const openAuthModal = useCallback((returnAction?: () => void) => {
+  const openAuthModal = useCallback((returnAction?: () => void, initialMode?: AuthMode) => {
     if (returnAction) {
       setPendingAction(() => returnAction);
+    }
+    if (initialMode) {
+      setAuthMode(initialMode);
     }
     setLoginError(null);
     setIsAuthModalOpen(true);
@@ -444,6 +493,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("rivq_token");
       localStorage.removeItem("synqsquad_user");
       localStorage.removeItem("synqsquad_token");
+      setIsFirstTimeUser(false);
       notifyAuthChange();
     } catch {}
   }, []);
@@ -484,6 +534,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           visible: true,
         }),
       }).catch((e) => console.error("Talent profile sync error:", e));
+    },
+    [user]
+  );
+
+  // Complete first-time user onboarding without fake data
+  const completeOnboarding = useCallback(
+    async (data: {
+      role: string;
+      college: string;
+      skills: string[];
+      lookingFor: "hackathon" | "research" | "both";
+      bio: string;
+    }): Promise<boolean> => {
+      if (!user) return false;
+      const token = localStorage.getItem("rivq_token") || localStorage.getItem("synqsquad_token") || "";
+
+      const finalProfile: UserProfile = {
+        ...user,
+        role: data.role.trim() || "Developer",
+        college: data.college.trim() || "Independent",
+        skills: data.skills.length > 0 ? data.skills : ["General Engineering"],
+        lookingFor: data.lookingFor,
+        bio: data.bio.trim(),
+      };
+
+      try {
+        localStorage.setItem("rivq_user", JSON.stringify(finalProfile));
+        localStorage.setItem("synqsquad_user", JSON.stringify(finalProfile));
+        notifyAuthChange();
+
+        // 1. Persist to users table
+        await fetch("/api/user", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(finalProfile),
+        });
+
+        // 2. Publish to talent directory (/api/people)
+        const lookingForArr =
+          finalProfile.lookingFor === "both"
+            ? ["hackathon", "research"]
+            : finalProfile.lookingFor === "hackathon"
+            ? ["hackathon"]
+            : ["research"];
+
+        await fetch("/api/people", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            displayName: finalProfile.name,
+            headline: `${finalProfile.role} • ${finalProfile.college}`,
+            skills: finalProfile.skills,
+            lookingFor: lookingForArr,
+            experienceLevel: "student",
+            bio: finalProfile.bio,
+            availability: "open",
+            visible: true,
+          }),
+        }).catch(() => {});
+
+        setIsFirstTimeUser(false);
+        setIsAuthModalOpen(false);
+        return true;
+      } catch (err) {
+        console.error("Failed to complete onboarding:", err);
+        return false;
+      }
     },
     [user]
   );
@@ -576,11 +699,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthModalOpen,
         isLoggingIn,
         loginError,
+        authMode,
+        setAuthMode,
         openAuthModal,
         closeAuthModal,
         signInWithGoogle,
         signOut,
         updateProfile,
+        completeOnboarding,
+        isFirstTimeUser,
+        setIsFirstTimeUser,
         contactedList,
         addContactedId,
         retryLogin,

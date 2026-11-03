@@ -4,6 +4,7 @@ import {
   getOutreachForUser,
   getTalentProfileById,
   isUserBlocked,
+  maskEmail,
 } from "@/lib/db";
 import { validateOutreachInput } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/auth-server";
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     const { recipientId, profileId, listingId, message } = validation.data;
 
-    // Look up target talent profile (with unmasked email)
+    // Look up target talent profile (internal server access for block check and notification)
     const targetProfile = await getTalentProfileById(profileId, true);
     if (!targetProfile) {
       return NextResponse.json(
@@ -91,21 +92,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: result.error }, { status });
     }
 
-    // Build prefilled Gmail compose URL
-    const subject = `[RIVQ] Teaming up: Collaboration Outreach from ${auth.user.name || "a fellow hacker"}`;
-    const body = `Hi ${targetProfile.displayName},\n\nI discovered your profile on RIVQ (${targetProfile.headline}).\n\n${message}\n\nLooking forward to collaborating on Gmail!\n\nBest,\n${auth.user.name || "A fellow teammate"}\n${auth.user.email}`;
-
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
-      targetProfile.email
-    )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
+    // Strict privacy: Collaboration request is recorded as 'pending'.
+    // Direct verified Gmail contact details are revealed only when the recipient explicitly accepts.
     return NextResponse.json({
       success: true,
+      status: "pending",
       remainingToday: result.remainingToday,
       outreachId: result.outreachId,
       recipientName: targetProfile.displayName,
-      recipientEmail: targetProfile.email,
-      gmailUrl,
+      recipientEmail: maskEmail(targetProfile.email),
+      message: "Collaboration outreach sent. Verified Gmail contact will be unlocked once accepted.",
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to record collaboration outreach";
