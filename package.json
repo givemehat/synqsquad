@@ -12,7 +12,8 @@
     "test:integration": "node --experimental-strip-types --env-file-if-exists=.env.test.local --env-file-if-exists=.env.local --test --test-concurrency=1 tests/*.test.mjs",
     "test:e2e": "node tests/api-e2e.mjs",
     "seed:supabase": "node --experimental-strip-types scripts/seed-supabase.mjs",
-    "seed:curated": "node --env-file-if-exists=.env.local scripts/seed-curated-listings.mjs"
+    "seed:curated": "node --env-file-if-exists=.env.local scripts/seed-curated-listings.mjs",
+    "seed:dataset": "node --env-file-if-exists=.env.local scripts/seed-dataset.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
