@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { authFetch } from "@/lib/api-client";
 import { Listing } from "@/types";
 import { X, Trash2, Mail, ShieldCheck, LogOut, RefreshCw, Edit3, ExternalLink } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
@@ -40,11 +41,10 @@ export function UserProfileDrawer({
     setActionLoading(listing.id);
     const newStatus = listing.status === "filled" ? "open" : "filled";
     try {
-      const res = await fetch(`/api/listings/${listing.id}`, {
+      const res = await authFetch(`/api/listings/${listing.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ownerEmail: user.email,
           status: newStatus,
         }),
       });
@@ -62,11 +62,10 @@ export function UserProfileDrawer({
   const handleRenew = async (listing: Listing) => {
     setActionLoading(listing.id);
     try {
-      const res = await fetch(`/api/listings/${listing.id}`, {
+      const res = await authFetch(`/api/listings/${listing.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ownerEmail: user.email,
           status: "renew",
         }),
       });
@@ -85,12 +84,8 @@ export function UserProfileDrawer({
     if (!confirm("Are you sure you want to permanently delete this listing?")) return;
     setActionLoading(listingId);
     try {
-      const res = await fetch(`/api/listings/${listingId}`, {
+      const res = await authFetch(`/api/listings/${listingId}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ownerEmail: user.email,
-        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -174,7 +169,7 @@ export function UserProfileDrawer({
         </div>
 
         {/* Tab Controls */}
-        <div className="flex border-b border-[var(--border-default)] px-4 bg-[var(--bg-surface)]">
+        <div className="flex border-b border-[var(--border-default)] px-4 bg-[var(--bg-surface)] items-center">
           <button
             type="button"
             onClick={() => setActiveTab("my_listings")}
@@ -197,6 +192,15 @@ export function UserProfileDrawer({
           >
             Contacted ({contactedListings.length})
           </button>
+          <Link
+            href="/profile?tab=outreach"
+            onClick={onClose}
+            className="py-3 px-3 text-xs font-medium text-[var(--accent-primary)] hover:underline flex items-center gap-1 ml-auto"
+            title="View collaboration invitations and responses"
+          >
+            <span>Invites</span>
+            <ExternalLink className="w-3 h-3" />
+          </Link>
         </div>
 
         {/* Tab Content */}

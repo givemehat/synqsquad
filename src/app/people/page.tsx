@@ -4,12 +4,13 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { TalentProfile, ScreenState, LookingForType } from "@/types";
 import { useAuth } from "@/context/AuthContext";
+import { authFetch } from "@/lib/api-client";
 import { Navbar } from "@/components/Navbar";
 import { PersonCard } from "@/components/PersonCard";
 import { GoogleAuthModal } from "@/components/GoogleAuthModal";
 import { Footer } from "@/components/Footer";
 import { StateView } from "@/components/StateView";
-import { Search, Users } from "lucide-react";
+import { Search, Users, Sparkles } from "lucide-react";
 
 // Code-split heavy modals and drawers
 const PersonDetailModal = dynamic(
@@ -49,7 +50,7 @@ export default function PeoplePage() {
     setErrorMessage("");
 
     try {
-      const res = await fetch("/api/people");
+      const res = await authFetch("/api/people");
       if (!res.ok) {
         throw new Error(`Server returned status ${res.status}`);
       }
@@ -200,6 +201,29 @@ export default function PeoplePage() {
                 />
                 <span>Open Now</span>
               </label>
+
+              {user?.skills && user.skills.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const primarySkill = user.skills[0];
+                    if (searchQuery.toLowerCase() === primarySkill.toLowerCase()) {
+                      setSearchQuery("");
+                    } else {
+                      setSearchQuery(primarySkill);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border text-xs font-medium transition-colors cursor-pointer select-none ${
+                    searchQuery.toLowerCase() === user.skills[0].toLowerCase()
+                      ? "bg-blue-600/10 border-blue-500/30 text-blue-500 font-semibold"
+                      : "bg-[var(--bg-elevated)] border-[var(--border-default)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                  title={`Filter by your skill: ${user.skills[0]}`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                  <span>My Skill: {user.skills[0]}</span>
+                </button>
+              )}
             </div>
           </div>
         </section>

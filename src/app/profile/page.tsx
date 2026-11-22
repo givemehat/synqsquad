@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Listing, AvailabilityStatus, ExperienceLevel, LookingForType } from "@/types";
+import { Listing, AvailabilityStatus, ExperienceLevel, LookingForType, OutreachRecord } from "@/types";
 import { authFetch } from "@/lib/api-client";
 import {
   ArrowLeft,
@@ -24,6 +24,8 @@ import {
   Loader2,
   Users,
   LogOut,
+  Copy,
+  Inbox,
 } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 
@@ -57,7 +59,14 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, signOut, contactedList, updateProfile, openAuthModal } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
-  const [activeTab, setActiveTab] = useState<"edit" | "listings" | "contacted">("edit");
+  const [activeTab, setActiveTab] = useState<"edit" | "listings" | "contacted" | "outreach">("edit");
+
+  // Outreach state
+  const [outreaches, setOutreaches] = useState<OutreachRecord[]>([]);
+  const [outreachLoading, setOutreachLoading] = useState(false);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [outreachDirectionFilter, setOutreachDirectionFilter] = useState<"all" | "incoming" | "outgoing">("all");
+  const [copiedOutreachEmail, setCopiedOutreachEmail] = useState<string | null>(null);
 
   // Edit form state
   const [editRole, setEditRole] = useState(user?.role || "Full-Stack Developer");
@@ -135,12 +144,76 @@ export default function ProfilePage() {
     }
   }, []);
 
+  // Fetch collaborations and invitations
+  const fetchOutreaches = useCallback(async () => {
+    if (!user) return;
+    setOutreachLoading(true);
+    try {
+      const res = await authFetch("/api/people/outreach");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setOutreaches(data.data);
+      }
+    } catch (err: unknown) {
+      console.error("Failed to load outreach records:", err);
+    } finally {
+      setOutreachLoading(false);
+    }
+  }, [user]);
+
+  const handleRespondOutreach = async (outreachId: string, action: "accept" | "decline") => {
+    setRespondingId(outreachId);
+    try {
+      const res = await authFetch(`/api/people/outreach/${outreachId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOutreaches((prev) =>
+          prev.map((o) =>
+            o.id === outreachId
+              ? {
+                  ...o,
+                  status: action === "accept" ? "accepted" : "declined",
+                  senderEmail: data.data?.senderEmail || o.senderEmail,
+                  recipientEmail: data.data?.recipientEmail || o.recipientEmail,
+                }
+              : o
+          )
+        );
+      }
+    } catch (err: unknown) {
+      console.error("Failed to respond to outreach:", err);
+    } finally {
+      setRespondingId(null);
+    }
+  };
+
+  const handleCopyOutreachEmail = (email: string) => {
+    navigator.clipboard.writeText(email);
+    setCopiedOutreachEmail(email);
+    setTimeout(() => setCopiedOutreachEmail(null), 2000);
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam === "outreach" || tabParam === "listings" || tabParam === "contacted") {
+        setActiveTab(tabParam as "outreach" | "listings" | "contacted");
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       fetchListings();
       fetchTalentProfile();
+      fetchOutreaches();
     }
-  }, [user, fetchListings, fetchTalentProfile]);
+  }, [user, fetchListings, fetchTalentProfile, fetchOutreaches]);
 
   if (!user) {
     return (
@@ -181,6 +254,34 @@ export default function ProfilePage() {
     (l) => l.ownerEmail.toLowerCase() === user.email.toLowerCase()
   );
   const myContacted = listings.filter((l) => contactedList.includes(l.id));
+
+  const incomingOutreaches = outreaches.filter(
+    (o) =>
+      o.recipientId === user.id ||
+      (user.email && o.recipientEmail.toLowerCase() === user.email.toLowerCase())
+  );
+  const outgoingOutreaches = outreaches.filter(
+    (o) =>
+      o.senderId === user.id ||
+      (user.email && o.senderEmail.toLowerCase() === user.email.toLowerCase())
+  );
+  const pendingIncomingCount = incomingOutreaches.filter((o) => o.status === "pending").length;
+
+  const displayedOutreaches = outreaches.filter((o) => {
+    if (outreachDirectionFilter === "incoming") {
+      return (
+        o.recipientId === user.id ||
+        (user.email && o.recipientEmail.toLowerCase() === user.email.toLowerCase())
+      );
+    }
+    if (outreachDirectionFilter === "outgoing") {
+      return (
+        o.senderId === user.id ||
+        (user.email && o.senderEmail.toLowerCase() === user.email.toLowerCase())
+      );
+    }
+    return true;
+  });
 
   const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) => {
@@ -433,6 +534,14 @@ export default function ProfilePage() {
               </div>
               <div className="px-3.5 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-center">
                 <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">
+                  Invites
+                </span>
+                <span className="text-base font-bold text-[var(--text-primary)]">
+                  {outreaches.length}
+                </span>
+              </div>
+              <div className="px-3.5 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-center">
+                <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-semibold block">
                   Squad Status
                 </span>
                 <span className="text-xs font-semibold text-emerald-500 flex items-center justify-center gap-1 mt-0.5">
@@ -470,11 +579,11 @@ export default function ProfilePage() {
         </div>
 
         {/* Tab Controls */}
-        <div className="flex border-b border-[var(--border-default)] gap-6 text-xs font-medium">
+        <div className="flex border-b border-[var(--border-default)] gap-4 sm:gap-6 text-xs font-medium overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab("edit")}
-            className={`pb-3 border-b-2 transition-all cursor-pointer ${
+            className={`pb-3 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "edit"
                 ? "border-blue-500 text-blue-600 dark:text-blue-400 font-semibold"
                 : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -485,7 +594,7 @@ export default function ProfilePage() {
           <button
             type="button"
             onClick={() => setActiveTab("listings")}
-            className={`pb-3 border-b-2 transition-all cursor-pointer ${
+            className={`pb-3 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "listings"
                 ? "border-blue-500 text-blue-600 dark:text-blue-400 font-semibold"
                 : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -495,14 +604,30 @@ export default function ProfilePage() {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab("outreach")}
+            className={`pb-3 border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === "outreach"
+                ? "border-blue-500 text-blue-600 dark:text-blue-400 font-semibold"
+                : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            }`}
+          >
+            <span>Collaborations & Invites ({outreaches.length})</span>
+            {pendingIncomingCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
+                {pendingIncomingCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab("contacted")}
-            className={`pb-3 border-b-2 transition-all cursor-pointer ${
+            className={`pb-3 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "contacted"
                 ? "border-blue-500 text-blue-600 dark:text-blue-400 font-semibold"
                 : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             }`}
           >
-            Contacted History ({myContacted.length})
+            Contacted Teams ({myContacted.length})
           </button>
         </div>
 
@@ -965,6 +1090,239 @@ export default function ProfilePage() {
                     </Link>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 4: Collaborations & Invitations */}
+        {activeTab === "outreach" && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  Collaborations & Invitations
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Incoming requests from team leads and outgoing invitations you sent to squadmates.
+                </p>
+              </div>
+
+              {/* Sub-Filter Pills */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-default)] shrink-0 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setOutreachDirectionFilter("all")}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                    outreachDirectionFilter === "all"
+                      ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  All ({outreaches.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOutreachDirectionFilter("incoming")}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+                    outreachDirectionFilter === "incoming"
+                      ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  <span>Received ({incomingOutreaches.length})</span>
+                  {pendingIncomingCount > 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOutreachDirectionFilter("outgoing")}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                    outreachDirectionFilter === "outgoing"
+                      ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  Sent ({outgoingOutreaches.length})
+                </button>
+              </div>
+            </div>
+
+            {outreachLoading ? (
+              <div className="surface-card rounded-2xl p-12 text-center border border-[var(--border-default)]">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />
+                <p className="text-xs text-[var(--text-secondary)] mt-2">Loading collaboration invites...</p>
+              </div>
+            ) : displayedOutreaches.length === 0 ? (
+              <div className="surface-card rounded-2xl p-10 text-center border border-[var(--border-default)] space-y-3">
+                <Inbox className="w-8 h-8 text-[var(--text-tertiary)] mx-auto" />
+                <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                  {outreachDirectionFilter === "incoming"
+                    ? "No incoming collaboration invites yet"
+                    : outreachDirectionFilter === "outgoing"
+                    ? "You haven't sent any invitations yet"
+                    : "No collaboration records found"}
+                </h4>
+                <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
+                  {outreachDirectionFilter === "incoming"
+                    ? "Publish your availability card on Find Squadmates to be discovered by project leads."
+                    : "Browse open talent cards on Find Squadmates and send personalized collaboration invites."}
+                </p>
+                <Link
+                  href="/people"
+                  className="inline-block mt-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors"
+                >
+                  Browse Squadmates Directory
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {displayedOutreaches.map((o) => {
+                  const isIncoming =
+                    o.recipientId === user.id ||
+                    (user.email && o.recipientEmail.toLowerCase() === user.email.toLowerCase());
+                  const otherPartyName = isIncoming ? o.senderName : o.recipientEmail.split("@")[0];
+                  const rawOtherEmail = isIncoming ? o.senderEmail : o.recipientEmail;
+                  const isAccepted = o.status === "accepted";
+                  const isPending = o.status === "pending";
+
+                  const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(
+                    rawOtherEmail
+                  )}&su=${encodeURIComponent(`[RIVQ] Teaming up: Following up on our collaboration`)}`;
+
+                  return (
+                    <div
+                      key={o.id}
+                      className="surface-card rounded-2xl p-4 sm:p-5 border border-[var(--border-default)] space-y-3 transition-colors hover:border-[var(--border-highlight)]"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={isIncoming ? o.senderName : otherPartyName} size={32} />
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-[var(--text-primary)]">
+                                {isIncoming ? `${o.senderName}` : `Invite sent to ${o.recipientEmail}`}
+                              </span>
+                              <span className="text-[10px] text-[var(--text-tertiary)] font-mono">
+                                • {new Date(o.createdAt).toLocaleDateString()}
+                              </span>
+                              <span
+                                className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold ${
+                                  isAccepted
+                                    ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                                    : isPending
+                                    ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                                    : "bg-[var(--bg-elevated)] text-[var(--text-tertiary)] border border-[var(--border-default)]"
+                                }`}
+                              >
+                                {isAccepted
+                                  ? "Accepted • Contact Unlocked"
+                                  : isPending
+                                  ? "Pending"
+                                  : "Declined"}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-[var(--text-tertiary)] block">
+                              {isIncoming ? "Received collaboration request" : "Sent by you"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Associated Requisition if attached */}
+                        {o.listingTitle && (
+                          <div className="px-2.5 py-1 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] truncate max-w-xs self-start sm:self-auto">
+                            <span className="font-mono text-blue-500 font-semibold mr-1">
+                              {o.listingEvent || "Event"}:
+                            </span>
+                            <span>{o.listingTitle}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Message Content */}
+                      <div className="p-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">
+                        &ldquo;{o.message}&rdquo;
+                      </div>
+
+                      {/* Action Area */}
+                      {isIncoming && isPending ? (
+                        <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
+                          <span className="text-[11px] text-[var(--text-tertiary)]">
+                            Accepting will reveal both of your verified Gmail accounts.
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleRespondOutreach(o.id, "decline")}
+                              disabled={respondingId === o.id}
+                              className="px-3 py-1.5 rounded-xl bg-[var(--bg-elevated)] hover:bg-[var(--bg-surface)] border border-[var(--border-default)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              Decline
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRespondOutreach(o.id, "accept")}
+                              disabled={respondingId === o.id}
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {respondingId === o.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5" />
+                              )}
+                              <span>Accept & Reveal Gmail</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : isAccepted ? (
+                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold block">
+                                Verified Gmail Unlocked
+                              </span>
+                              <span className="font-mono text-xs font-semibold text-[var(--text-primary)] truncate block select-all">
+                                {rawOtherEmail}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyOutreachEmail(rawOtherEmail)}
+                              className="px-2.5 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] border border-[var(--border-default)] text-xs font-medium text-[var(--text-primary)] flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              {copiedOutreachEmail === rawOtherEmail ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                  <span className="text-emerald-500">Copied!</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+                            <a
+                              href={gmailComposeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                              <span>Open in Gmail</span>
+                              <ExternalLink className="w-3 h-3 opacity-80" />
+                            </a>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
