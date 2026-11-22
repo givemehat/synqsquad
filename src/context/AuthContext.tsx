@@ -474,6 +474,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // 4. Local development / prototype fallback when Supabase is unconfigured on localhost
+      if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+        const mockPayload = {
+          sub: "usr-demo-local-01",
+          email: "arjun.nair.dev@gmail.com",
+          user_metadata: {
+            full_name: "Arjun Nair",
+            avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+          },
+          exp: Math.floor(Date.now() / 1000) + 86400 * 30,
+        };
+        const mockJwt = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify(mockPayload))}.signature`;
+        try {
+          localStorage.setItem("rivq_token", mockJwt);
+          localStorage.setItem("synqsquad_token", mockJwt);
+
+          const demoUser: UserProfile = {
+            id: mockPayload.sub,
+            email: mockPayload.email,
+            displayName: mockPayload.user_metadata.full_name,
+            role: profileData?.role || "Full-Stack Builder & GenAI Hacker",
+            college: profileData?.college || "IIT Delhi",
+            skills: profileData?.skills && profileData.skills.length > 0 ? profileData.skills : ["Next.js", "React", "TypeScript", "Python"],
+            lookingFor: profileData?.lookingFor || "both",
+            bio: profileData?.bio || "Building high-performance apps and research prototypes. Open to hackathon squads.",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          localStorage.setItem("rivq_user", JSON.stringify(demoUser));
+          localStorage.setItem("synqsquad_user", JSON.stringify(demoUser));
+          notifyAuthChange();
+          setIsLoggingIn(false);
+          return true;
+        } catch {}
+      }
+
       setLoginError("Authentication service is not configured. Please contact support.");
       setIsLoggingIn(false);
       return false;
