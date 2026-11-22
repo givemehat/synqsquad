@@ -181,6 +181,8 @@ export function ListingDetailDrawer({ listing, onClose }: ListingDetailDrawerPro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           listingId: listing.id,
+          subject: customSubject,
+          message: customBody,
         }),
       });
 

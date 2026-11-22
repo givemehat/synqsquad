@@ -137,6 +137,8 @@ export const contactInputSchema = z
       )
       .transform((e) => e.toLowerCase().trim()),
     listingId: z.string().min(1, "Listing ID is required"),
+    subject: z.string().max(200).optional(),
+    message: z.string().max(2500).optional(),
   })
   .strict();
 
