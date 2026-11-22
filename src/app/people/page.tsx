@@ -70,7 +70,7 @@ export default function PeoplePage() {
 
   useEffect(() => {
     fetchProfiles();
-  }, [fetchProfiles]);
+  }, [fetchProfiles, user]);
 
   const filteredProfiles = useMemo(() => {
     return profiles.filter((p) => {

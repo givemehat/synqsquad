@@ -22,11 +22,10 @@ export async function GET(
       );
     }
 
-    // Strict privacy: Only the profile owner can see their own unmasked email!
-    const isOwner = Boolean(auth.user && profile.userId === auth.user.id);
+    // Strict privacy: unmasked for authenticated users, masked for logged-out public visitors
     const sanitizedProfile = {
       ...profile,
-      email: isOwner ? profile.email : maskEmail(profile.email),
+      email: isAuthenticated ? profile.email : maskEmail(profile.email),
     };
 
     return NextResponse.json({

@@ -493,14 +493,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const demoUser: UserProfile = {
             id: mockPayload.sub,
             email: mockPayload.email,
-            displayName: mockPayload.user_metadata.full_name,
+            name: mockPayload.user_metadata.full_name,
             role: profileData?.role || "Full-Stack Builder & GenAI Hacker",
             college: profileData?.college || "IIT Delhi",
             skills: profileData?.skills && profileData.skills.length > 0 ? profileData.skills : ["Next.js", "React", "TypeScript", "Python"],
             lookingFor: profileData?.lookingFor || "both",
             bio: profileData?.bio || "Building high-performance apps and research prototypes. Open to hackathon squads.",
+            consentAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
           };
           localStorage.setItem("rivq_user", JSON.stringify(demoUser));
           localStorage.setItem("synqsquad_user", JSON.stringify(demoUser));

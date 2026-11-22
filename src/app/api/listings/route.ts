@@ -41,12 +41,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Strict privacy: only the authenticated creator of a specific listing sees their own email unmasked
+    // Strict privacy: unmasked for authenticated users, masked for logged-out public visitors
     const sanitizedListings = listings.map((l) => {
-      const isOwner = Boolean(viewerId && l.ownerId === viewerId);
       return {
         ...l,
-        ownerEmail: isOwner && auth.user?.email ? auth.user.email : (l.ownerEmail.includes("••") ? l.ownerEmail : maskEmail(l.ownerEmail)),
+        ownerEmail: isAuth ? l.ownerEmail : (l.ownerEmail.includes("••") ? l.ownerEmail : maskEmail(l.ownerEmail)),
       };
     });
 

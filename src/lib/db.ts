@@ -12,7 +12,13 @@ import type {
 import { SEED_LISTINGS } from "../data/seed.ts";
 import { SEED_PEOPLE } from "../data/seed-people.ts";
 import type { TalentProfileInput } from "./validations.ts";
-import { getSupabaseServerClient, isSupabaseServerConfigured } from "./supabase-server.ts";
+import {
+  getSupabaseServerClient,
+  getSupabaseUserClient,
+  getSupabaseAnonClient,
+  isSupabaseServerConfigured,
+} from "./supabase-server.ts";
+import { getSupabaseAdminClient, isAdminConfigured } from "./supabase-admin.ts";
 
 export interface BlockRecord {
   id: string;
@@ -147,14 +153,29 @@ export async function getListings(
 
   if (isSupabaseServerConfigured()) {
     try {
-      const supabase = getSupabaseServerClient();
+      const supabase = authenticated && _userToken
+        ? getSupabaseUserClient(_userToken)
+        : (isAdminConfigured() ? getSupabaseAdminClient() : getSupabaseServerClient(_userToken));
+
       // When unauthenticated, query safe public_listings view that masks emails in PostgreSQL
       const tableName = authenticated ? "listings" : "public_listings";
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from(tableName)
         .select("*")
         .neq("status", "hidden")
         .order("created_at", { ascending: false });
+
+      if ((error || !data || data.length === 0) && authenticated) {
+        const fallbackRes = await getSupabaseAnonClient()
+          .from("public_listings")
+          .select("*")
+          .neq("status", "hidden")
+          .order("created_at", { ascending: false });
+        if (!fallbackRes.error && fallbackRes.data) {
+          data = fallbackRes.data;
+          error = null;
+        }
+      }
 
       if (!error && Array.isArray(data)) {
         const now = new Date();
@@ -1013,7 +1034,10 @@ export async function getTalentProfiles(
 
   if (isSupabaseServerConfigured()) {
     try {
-      const supabase = getSupabaseServerClient();
+      const supabase = authenticated && _userToken
+        ? getSupabaseUserClient(_userToken)
+        : (isAdminConfigured() ? getSupabaseAdminClient() : getSupabaseServerClient(_userToken));
+
       const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
       let query = supabase.from(tableName).select("*", { count: "exact" });
 
@@ -1039,7 +1063,30 @@ export async function getTalentProfiles(
 
       query = query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
 
-      const { data, count, error } = await query;
+      let { data, count, error } = await query;
+
+      // Fallback to public view if authenticated read on table fails or is blocked by RLS
+      if ((error || !data || data.length === 0) && authenticated) {
+        const publicClient = getSupabaseAnonClient();
+        let pubQuery = publicClient.from("public_talent_profiles").select("*", { count: "exact" });
+        pubQuery = pubQuery.eq("visible", true).neq("availability", "hidden");
+        if (options?.availability) pubQuery = pubQuery.eq("availability", options.availability);
+        if (options?.experienceLevel) pubQuery = pubQuery.eq("experience_level", options.experienceLevel);
+        if (options?.lookingFor) pubQuery = pubQuery.contains("looking_for", [options.lookingFor]);
+        if (options?.skills && options.skills.length > 0) pubQuery = pubQuery.overlaps("skills", options.skills);
+        if (options?.search) {
+          pubQuery = pubQuery.or(
+            `display_name.ilike.%${options.search}%,headline.ilike.%${options.search}%,bio.ilike.%${options.search}%`
+          );
+        }
+        const pubRes = await pubQuery.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+        if (!pubRes.error && pubRes.data && pubRes.data.length > 0) {
+          data = pubRes.data;
+          count = pubRes.count;
+          error = null;
+        }
+      }
+
       if (!error && data && data.length > 0) {
         let rows = data as TalentProfileRow[];
         if (viewerIdOrEmail && rows.length > 0) {
@@ -1123,9 +1170,20 @@ export async function getTalentProfileById(
   viewerIdOrEmail?: string, _userToken?: string): Promise<TalentProfile | null> {
   if (isSupabaseServerConfigured()) {
     try {
-      const supabase = getSupabaseServerClient();
+      const supabase = authenticated && _userToken
+        ? getSupabaseUserClient(_userToken)
+        : (isAdminConfigured() ? getSupabaseAdminClient() : getSupabaseServerClient(_userToken));
+
       const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
-      const { data, error } = await supabase.from(tableName).select("*").eq("id", id).maybeSingle();
+      let { data, error } = await supabase.from(tableName).select("*").eq("id", id).maybeSingle();
+
+      if ((error || !data) && authenticated) {
+        const fallbackRes = await getSupabaseAnonClient().from("public_talent_profiles").select("*").eq("id", id).maybeSingle();
+        if (!fallbackRes.error && fallbackRes.data) {
+          data = fallbackRes.data;
+          error = null;
+        }
+      }
 
       if (!error && data) {
         if (viewerIdOrEmail) {

@@ -20,10 +20,10 @@ export async function GET(
       );
     }
 
-    const isOwner = Boolean(viewerId && listing.ownerId === viewerId);
+    const isAuth = Boolean(auth.user);
     const sanitized = {
       ...listing,
-      ownerEmail: isOwner ? listing.ownerEmail : maskEmail(listing.ownerEmail),
+      ownerEmail: isAuth ? listing.ownerEmail : maskEmail(listing.ownerEmail),
     };
 
     return NextResponse.json({ success: true, data: sanitized });
