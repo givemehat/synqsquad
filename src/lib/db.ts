@@ -37,15 +37,14 @@ export function maskEmail(email: string): string {
   return `${local.slice(0, 2)}••••${local.slice(-1)}@${domain}`;
 }
 
-// In-memory runtime store used ONLY when Supabase credentials are not configured (unit tests / local dev fallback)
-// In production, fallback NEVER returns fake seed data to real users!
-const isProduction = process.env.NODE_ENV === "production" && process.env.DEMO_MODE !== "true";
-let inMemoryListings: Listing[] = isProduction ? [] : [...SEED_LISTINGS];
+// In-memory runtime store used ONLY when Supabase credentials are not configured (unit tests / local dev / prototype fallback)
+const useSeedFallback = !isSupabaseServerConfigured();
+let inMemoryListings: Listing[] = useSeedFallback ? [...SEED_LISTINGS] : [];
 let inMemoryContacts: ContactRecord[] = [];
 let inMemoryUsers: UserProfile[] = [];
 let inMemoryReports: ReportRecord[] = [];
 let inMemoryBlocks: BlockRecord[] = [];
-let inMemoryTalentProfiles: TalentProfile[] = isProduction ? [] : [...SEED_PEOPLE];
+let inMemoryTalentProfiles: TalentProfile[] = useSeedFallback ? [...SEED_PEOPLE] : [];
 let inMemoryOutreach: OutreachRecord[] = [];
 const inMemoryAiUsage = new Map<string, { count: number; resetAt: number }>();
 
@@ -57,13 +56,13 @@ export function isDbFallbackActive(): boolean {
  * Reset in-memory database store (useful for clean unit testing)
  */
 export function resetInMemoryStore(): void {
-  const isProd = process.env.NODE_ENV === "production" && process.env.DEMO_MODE !== "true";
-  inMemoryListings = isProd ? [] : [...SEED_LISTINGS];
+  const useSeed = !isSupabaseServerConfigured();
+  inMemoryListings = useSeed ? [...SEED_LISTINGS] : [];
   inMemoryContacts = [];
   inMemoryUsers = [];
   inMemoryReports = [];
   inMemoryBlocks = [];
-  inMemoryTalentProfiles = isProd ? [] : [...SEED_PEOPLE];
+  inMemoryTalentProfiles = useSeed ? [...SEED_PEOPLE] : [];
   inMemoryOutreach = [];
   inMemoryAiUsage.clear();
 }
