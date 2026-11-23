@@ -153,9 +153,11 @@ export async function getListings(
 
   if (isSupabaseServerConfigured()) {
     try {
-      const supabase = authenticated && _userToken
-        ? getSupabaseUserClient(_userToken)
-        : (isAdminConfigured() ? getSupabaseAdminClient() : getSupabaseServerClient(_userToken));
+      const supabase = isAdminConfigured()
+        ? getSupabaseAdminClient()
+        : (authenticated && _userToken
+            ? getSupabaseUserClient(_userToken)
+            : getSupabaseServerClient(_userToken));
 
       // When unauthenticated, query safe public_listings view that masks emails in PostgreSQL
       const tableName = authenticated ? "listings" : "public_listings";
@@ -238,12 +240,26 @@ export async function getListingById(
   authenticated: boolean = false,
   viewerId?: string, _userToken?: string): Promise<Listing | null> {
   if (isSupabaseServerConfigured()) {
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
+    const supabase = isAdminConfigured()
+      ? getSupabaseAdminClient()
+      : (authenticated && _userToken ? getSupabaseUserClient(_userToken) : getSupabaseServerClient(_userToken));
+    let { data, error } = await supabase
       .from("listings")
       .select("*")
       .eq("id", id)
       .maybeSingle();
+
+    if ((error || !data) && !isAdminConfigured()) {
+      const fallbackRes = await getSupabaseAnonClient()
+        .from("public_listings")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (!fallbackRes.error && fallbackRes.data) {
+        data = fallbackRes.data;
+        error = null;
+      }
+    }
 
     if (error || !data) return null;
     const isOwner = Boolean(viewerId && data.owner_id === viewerId);
@@ -1034,9 +1050,11 @@ export async function getTalentProfiles(
 
   if (isSupabaseServerConfigured()) {
     try {
-      const supabase = authenticated && _userToken
-        ? getSupabaseUserClient(_userToken)
-        : (isAdminConfigured() ? getSupabaseAdminClient() : getSupabaseServerClient(_userToken));
+      const supabase = isAdminConfigured()
+        ? getSupabaseAdminClient()
+        : (authenticated && _userToken
+            ? getSupabaseUserClient(_userToken)
+            : getSupabaseServerClient(_userToken));
 
       const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
       let query = supabase.from(tableName).select("*", { count: "exact" });
@@ -1170,9 +1188,11 @@ export async function getTalentProfileById(
   viewerIdOrEmail?: string, _userToken?: string): Promise<TalentProfile | null> {
   if (isSupabaseServerConfigured()) {
     try {
-      const supabase = authenticated && _userToken
-        ? getSupabaseUserClient(_userToken)
-        : (isAdminConfigured() ? getSupabaseAdminClient() : getSupabaseServerClient(_userToken));
+      const supabase = isAdminConfigured()
+        ? getSupabaseAdminClient()
+        : (authenticated && _userToken
+            ? getSupabaseUserClient(_userToken)
+            : getSupabaseServerClient(_userToken));
 
       const tableName = authenticated ? "talent_profiles" : "public_talent_profiles";
       let { data, error } = await supabase.from(tableName).select("*").eq("id", id).maybeSingle();
