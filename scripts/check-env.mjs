@@ -58,6 +58,8 @@ const displayStatus = [
   },
   { name: "NEXT_PUBLIC_APP_URL", present: Boolean(process.env.NEXT_PUBLIC_APP_URL?.trim()), required: false },
   { name: "MONGODB_URI", present: Boolean(process.env.MONGODB_URI?.trim()), required: false },
+  { name: "TESTMAIL_API_KEY", present: Boolean(process.env.TESTMAIL_API_KEY?.trim()), required: false },
+  { name: "TESTMAIL_NAMESPACE", present: Boolean(process.env.TESTMAIL_NAMESPACE?.trim()), required: false },
   { name: "PLAY_APP_SIGNING_SHA256", present: Boolean(process.env.PLAY_APP_SIGNING_SHA256?.trim()), required: false },
 ];
 
