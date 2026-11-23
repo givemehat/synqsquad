@@ -57,6 +57,7 @@ const displayStatus = [
     note: isVercelBuild && !hasServiceRoleKey ? " (Runtime-injected Vercel Sensitive Variable)" : ""
   },
   { name: "NEXT_PUBLIC_APP_URL", present: Boolean(process.env.NEXT_PUBLIC_APP_URL?.trim()), required: false },
+  { name: "MONGODB_URI", present: Boolean(process.env.MONGODB_URI?.trim()), required: false },
   { name: "PLAY_APP_SIGNING_SHA256", present: Boolean(process.env.PLAY_APP_SIGNING_SHA256?.trim()), required: false },
 ];
 

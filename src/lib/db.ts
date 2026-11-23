@@ -19,6 +19,13 @@ import {
   isSupabaseServerConfigured,
 } from "./supabase-server.ts";
 import { getSupabaseAdminClient, isAdminConfigured } from "./supabase-admin.ts";
+import {
+  saveListingToMongo,
+  deleteListingFromMongo,
+  saveTalentProfileToMongo,
+  logContactAuditToMongo,
+} from "./mongodb-service.ts";
+import { isMongoConfigured } from "./mongodb.ts";
 
 export interface BlockRecord {
   id: string;
@@ -322,10 +329,17 @@ export async function createListing(
       throw new Error(`Database error: ${error.message}`);
     }
 
-    return rowToListing(created, true);
+    const createdListing = rowToListing(created, true);
+    if (isMongoConfigured()) {
+      saveListingToMongo(createdListing).catch((err) => console.error("[MongoDB] Sync error:", err));
+    }
+    return createdListing;
   }
 
   inMemoryListings.unshift(newListing);
+  if (isMongoConfigured()) {
+    saveListingToMongo(newListing).catch((err) => console.error("[MongoDB] Sync error:", err));
+  }
   return newListing;
 }
 
@@ -444,6 +458,9 @@ export async function deleteListing(
   }
 
   inMemoryListings.splice(index, 1);
+  if (isMongoConfigured()) {
+    deleteListingFromMongo(id).catch((err) => console.error("[MongoDB] Delete sync error:", err));
+  }
   return { success: true };
 }
 
@@ -540,6 +557,9 @@ export async function recordContact(
   };
 
   inMemoryContacts.push(contactRecord);
+  if (isMongoConfigured()) {
+    logContactAuditToMongo(contactRecord, "requisition_connect").catch((err) => console.error("[MongoDB] Contact audit error:", err));
+  }
 
   return {
     success: true,
@@ -1338,6 +1358,9 @@ export async function upsertTalentProfile(
       updatedAt: now,
     };
     inMemoryTalentProfiles[idx] = updated;
+    if (isMongoConfigured()) {
+      saveTalentProfileToMongo(updated).catch((err) => console.error("[MongoDB] Profile sync error:", err));
+    }
     return { success: true, profile: updated };
   }
 
@@ -1360,6 +1383,9 @@ export async function upsertTalentProfile(
     updatedAt: now,
   };
   inMemoryTalentProfiles.unshift(created);
+  if (isMongoConfigured()) {
+    saveTalentProfileToMongo(created).catch((err) => console.error("[MongoDB] Profile sync error:", err));
+  }
   return { success: true, profile: created };
 }
 
